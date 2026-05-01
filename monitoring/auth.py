@@ -96,6 +96,15 @@ class WatchlistAddRequest(BaseModel):
     item_type: str = "stock"
 
 
+class TradeRequest(BaseModel):
+    symbol: str
+    name: str = ""
+    side: str        # "BUY" or "SELL"
+    type: str = "STOCK"
+    price: float
+    volume: int
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
@@ -135,6 +144,21 @@ CREATE TABLE IF NOT EXISTS watchlist (
 );
 """
 
+CREATE_TRADES_TABLE = """
+CREATE TABLE IF NOT EXISTS trades (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    symbol      VARCHAR(20) NOT NULL,
+    name        TEXT NOT NULL DEFAULT '',
+    side        VARCHAR(4) NOT NULL,
+    type        VARCHAR(10) NOT NULL DEFAULT 'STOCK',
+    price       NUMERIC(12,2) NOT NULL,
+    volume      INTEGER NOT NULL,
+    total_value NUMERIC(14,2) NOT NULL,
+    traded_at   TIMESTAMPTZ DEFAULT NOW()
+);
+"""
+
 
 async def _ensure_database_exists():
     """Connect to the default postgres DB and create equititrack if it doesn't exist."""
@@ -163,6 +187,7 @@ async def create_db_pool() -> asyncpg.Pool:
     async with pool.acquire() as conn:
         await conn.execute(CREATE_USERS_TABLE)
         await conn.execute(CREATE_WATCHLIST_TABLE)
+        await conn.execute(CREATE_TRADES_TABLE)
     print("DB pool created and schema ensured.")
     return pool
 
@@ -234,6 +259,45 @@ async def remove_from_watchlist(pool: asyncpg.Pool, user_id: int, symbol: str) -
             "DELETE FROM watchlist WHERE user_id = $1 AND symbol = $2",
             user_id, symbol,
         )
+
+
+async def create_trade(pool: asyncpg.Pool, user_id: int, symbol: str, name: str,
+                       side: str, trade_type: str, price: float, volume: int) -> dict:
+    total_value = round(price * volume, 2)
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO trades (user_id, symbol, name, side, type, price, volume, total_value)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, symbol, name, side, type, price, volume, total_value, traded_at
+            """,
+            user_id, symbol, name, side.upper(), trade_type.upper(),
+            price, volume, total_value,
+        )
+    return dict(row)
+
+
+async def get_trades(pool: asyncpg.Pool, user_id: int) -> list[dict]:
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, symbol, name, side, type, price, volume, total_value, traded_at "
+            "FROM trades WHERE user_id = $1 ORDER BY traded_at DESC",
+            user_id,
+        )
+    return [dict(r) for r in rows]
+
+
+async def get_net_position(pool: asyncpg.Pool, user_id: int, symbol: str) -> int:
+    async with pool.acquire() as conn:
+        buy_vol = await conn.fetchval(
+            "SELECT COALESCE(SUM(volume), 0) FROM trades WHERE user_id=$1 AND symbol=$2 AND side='BUY'",
+            user_id, symbol,
+        )
+        sell_vol = await conn.fetchval(
+            "SELECT COALESCE(SUM(volume), 0) FROM trades WHERE user_id=$1 AND symbol=$2 AND side='SELL'",
+            user_id, symbol,
+        )
+    return int(buy_vol) - int(sell_vol)
 
 
 # ---------------------------------------------------------------------------

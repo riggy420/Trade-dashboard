@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react';
-import { refreshTickers, refreshAllIntradayData, getTickers, fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan } from '../api/endpoints';
+import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 
-type SortField = 'symbol' | 'name' | 'price' | 'change' | 'industry' | null;
-type SortOrder = 'asc' | 'desc';
-
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
-  const [tickers, setTickers] = useState<any[]>([]);
   const [indices, setIndices] = useState<any[]>([]);
   const [sectors, setSectors] = useState<any[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<any | null>(null);
@@ -18,17 +14,15 @@ export default function Dashboard() {
   const [indexHistoryLoading, setIndexHistoryLoading] = useState(false);
   const [supervisionAlerts, setSupervisionAlerts] = useState<any[]>([]);
   const [supervisionLoading, setSupervisionLoading] = useState(false);
-  const [sortField, setSortField] = useState<SortField>('symbol');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [searchFilter, setSearchFilter] = useState('');
   const navigate = useNavigate();
   const { isWatched, toggleWatchlist, watchlistItems } = useWatchlist();
+  const [tickers, setTickers] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchTickersList();
     fetchIndicesData();
     fetchSectorsData();
     fetchSupervisionAlerts();
+    getTickers().then((data) => setTickers(data.tickers || [])).catch(() => {});
   }, []);
 
   const fetchSupervisionAlerts = async () => {
@@ -40,15 +34,6 @@ export default function Dashboard() {
       console.error("Failed to load supervision scan:", e);
     }
     setSupervisionLoading(false);
-  };
-
-  const fetchTickersList = async () => {
-    try {
-      const data = await getTickers();
-      setTickers(data.tickers || []);
-    } catch (e) {
-      console.error("Failed to load tickers:", e);
-    }
   };
 
   const fetchIndicesData = async () => {
@@ -120,18 +105,6 @@ export default function Dashboard() {
     );
   };
 
-  const handleRefreshTickers = async () => {
-    setLoading(true);
-    try {
-      await refreshTickers();
-      await fetchTickersList();
-      alert('Master Ticker list refreshed!');
-    } catch (e) {
-      alert("Error connecting to backend");
-    }
-    setLoading(false);
-  };
-
   const handleRefreshIndices = async () => {
     setLoading(true);
     try {
@@ -144,35 +117,9 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  const handleMassFetchIntraday = async () => {
-    setLoading(true);
-    try {
-      await refreshAllIntradayData(10);
-      alert('10 Intraday records refreshed!');
-    } catch (e) {
-      alert("Error connecting to backend");
-    }
-    setLoading(false);
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
-    }
-  };
-
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return '⇅';
-    return sortOrder === 'asc' ? '↑' : '↓';
-  };
-
   const industryIndices = indices.filter((idx) => idx.group === 'industry');
   const conceptIndices = indices.filter((idx) => idx.group === 'concept');
 
-  // Watchlist movers: join watchlist stocks with live ticker data, sort by |change|
   const watchlistMovers = watchlistItems
     .filter((w) => w.item_type === 'stock')
     .map((w) => {
@@ -183,28 +130,6 @@ export default function Dashboard() {
     })
     .filter(Boolean)
     .sort((a: any, b: any) => b.absChange - a.absChange);
-
-  const filteredAndSortedTickers = tickers
-    .filter((t) => {
-      const search = searchFilter.toLowerCase();
-      return t.symbol.toLowerCase().includes(search) || t.name.toLowerCase().includes(search);
-    })
-    .sort((a, b) => {
-      if (!sortField) return 0;
-
-      let aVal: any = a[sortField];
-      let bVal: any = b[sortField];
-
-      // Parse numeric values
-      if (sortField === 'price' || sortField === 'change') {
-        aVal = parseFloat(String(aVal)) || 0;
-        bVal = parseFloat(String(bVal)) || 0;
-      }
-
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
 
   return (
     <div className="p-8 text-gray-800">
@@ -517,107 +442,6 @@ export default function Dashboard() {
             <p className="text-gray-500 text-sm">No sector data loaded.</p>
           )}
         </div>
-      </div>
-
-      {/* Stock Watchlist with Filtering and Sorting */}
-      <div className="border p-4 rounded shadow-sm bg-white">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-bold">Tawian board</h2>
-          <div className="flex gap-2">
-            <button onClick={handleRefreshTickers} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm transition disabled:opacity-50" disabled={loading}>
-              Refresh Tickers
-            </button>
-            <button onClick={handleMassFetchIntraday} className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded text-sm transition disabled:opacity-50" disabled={loading}>
-              Fetch Data (10)
-            </button>
-          </div>
-        </div>
-
-        {/* Search/Filter Input */}
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Filter by symbol or name..."
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <div className="overflow-y-auto" style={{ maxHeight: "500px" }}>
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-white border-b-2 border-gray-300">
-              <tr className="text-gray-600">
-                <th className="py-2 px-2 w-8"></th>
-                <th
-                  className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold"
-                  onClick={() => handleSort('symbol')}
-                >
-                  SYMBOL {getSortIcon('symbol')}
-                </th>
-                <th 
-                  className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold"
-                  onClick={() => handleSort('name')}
-                >
-                  EXCHANGE / INFO {getSortIcon('name')}
-                </th>
-                <th 
-                  className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold"
-                  onClick={() => handleSort('industry')}
-                >
-                  INDUSTRY {getSortIcon('industry')}
-                </th>
-                <th 
-                  className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right"
-                  onClick={() => handleSort('price')}
-                >
-                  PRICE {getSortIcon('price')}
-                </th>
-                <th 
-                  className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right"
-                  onClick={() => handleSort('change')}
-                >
-                  CHANGE {getSortIcon('change')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAndSortedTickers.length > 0 ? (
-                filteredAndSortedTickers.map((t, idx) => (
-                  <tr key={idx} className="border-b hover:bg-gray-50 cursor-pointer transition" onClick={() => navigate(`/analysis/${t.symbol}`)}>
-                    <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => toggleWatchlist(t.symbol, t.name, 'stock')}
-                        className="text-base leading-none transition"
-                        title={isWatched(t.symbol) ? 'Remove from watchlist' : 'Add to watchlist'}
-                      >
-                        <span className={isWatched(t.symbol) ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}>★</span>
-                      </button>
-                    </td>
-                    <td className="py-3 px-2 font-bold text-blue-600">{t.symbol}</td>
-                    <td className="py-3 px-2 text-gray-700">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">{t.market || 'Unknown'}</span>
-                        <span>{t.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-gray-700 text-sm">{t.industry || 'Unknown'}</td>
-                    <td className="py-3 px-2 font-semibold text-right">{t.price}</td>
-                    <td className={`py-3 px-2 font-semibold text-right ${t.change.includes('+') ? 'text-green-600' : t.change.includes('-') ? 'text-red-600' : 'text-gray-400'}`}>
-                      {t.change}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="py-4 text-center text-gray-500">No tickers match your filter.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-gray-500 mt-2">Showing {filteredAndSortedTickers.length} of {tickers.length} stocks</p>
       </div>
     </div>
   );

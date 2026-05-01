@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchAnalysisData } from '../api/endpoints';
-import { useLocation, useParams } from 'react-router-dom';
+import { fetchAnalysisData, getTickers } from '../api/endpoints';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import TradeModal from './TradeModal';
+import { useWatchlist } from '../context/WatchlistContext';
 
 const indicatorLabels: Record<string, string> = {
   sma: 'SMA 5D',
@@ -39,6 +41,7 @@ const formatValue = (value: number | null | undefined) => {
 export default function MarketAnalysis() {
   const { tickerId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const activeTicker = tickerId || '2330';
   const searchParams = new URLSearchParams(location.search);
   const indicatorSearch = (searchParams.get('indicator') || '').toLowerCase();
@@ -59,6 +62,15 @@ export default function MarketAnalysis() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
+  // Trade modal
+  const [tradeModal, setTradeModal] = useState<{ open: boolean; side: 'BUY' | 'SELL' }>({ open: false, side: 'BUY' });
+  const [tradeSuccess, setTradeSuccess] = useState('');
+  // Taiwan Board table
+  const [tickers, setTickers] = useState<any[]>([]);
+  const [tickerSearch, setTickerSearch] = useState('');
+  const [tickerSortField, setTickerSortField] = useState<'symbol' | 'name' | 'price' | 'change' | 'industry' | null>('symbol');
+  const [tickerSortOrder, setTickerSortOrder] = useState<'asc' | 'desc'>('asc');
+  const { isWatched, toggleWatchlist } = useWatchlist();
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawingStrokes, setDrawingStrokes] = useState<Array<Array<{ x: number; y: number }>>>([]);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -214,9 +226,14 @@ export default function MarketAnalysis() {
         setLoading(false);
       }
     };
-
     loadData();
   }, [activeTicker]);
+
+  useEffect(() => {
+    getTickers()
+      .then((data) => setTickers(data.tickers || []))
+      .catch(() => {});
+  }, []);
 
   const chartData = useMemo(() => {
     return historicalData.map((row) => ({
@@ -255,9 +272,37 @@ export default function MarketAnalysis() {
 
   const activeIndicatorLabel = indicatorLabels[indicatorSearch] || 'All indicators';
 
+  const handleTickerSort = (field: typeof tickerSortField) => {
+    if (tickerSortField === field) setTickerSortOrder(tickerSortOrder === 'asc' ? 'desc' : 'asc');
+    else { setTickerSortField(field); setTickerSortOrder('asc'); }
+  };
+  const tickerSortIcon = (f: typeof tickerSortField) =>
+    tickerSortField !== f ? '⇅' : tickerSortOrder === 'asc' ? '↑' : '↓';
+
+  const filteredTickers = tickers
+    .filter((t) => {
+      const s = tickerSearch.toLowerCase();
+      return t.symbol.toLowerCase().includes(s) || t.name.toLowerCase().includes(s);
+    })
+    .sort((a, b) => {
+      if (!tickerSortField) return 0;
+      let av: any = a[tickerSortField], bv: any = b[tickerSortField];
+      if (tickerSortField === 'price' || tickerSortField === 'change') {
+        av = parseFloat(String(av)) || 0; bv = parseFloat(String(bv)) || 0;
+      }
+      if (av < bv) return tickerSortOrder === 'asc' ? -1 : 1;
+      if (av > bv) return tickerSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
   return (
     <div className="p-8 text-gray-800">
       <div className="flex flex-col gap-4 mb-6">
+        {tradeSuccess && (
+          <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-2 rounded">
+            {tradeSuccess}
+          </div>
+        )}
          <div className="bg-white px-4 py-3 rounded shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 flex items-center justify-between gap-6">
            <div>
              <div className="flex items-baseline gap-3">
@@ -272,6 +317,22 @@ export default function MarketAnalysis() {
              </div>
              <div className="text-sm text-gray-500 mt-1">
                Open: {latestOpen !== null ? `NT$${latestOpen.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+             </div>
+             <div className="flex gap-2 mt-3">
+               <button
+                 type="button"
+                 onClick={() => setTradeModal({ open: true, side: 'BUY' })}
+                 className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition"
+               >
+                 Buy
+               </button>
+               <button
+                 type="button"
+                 onClick={() => setTradeModal({ open: true, side: 'SELL' })}
+                 className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded transition"
+               >
+                 Sell
+               </button>
              </div>
            </div>
            <div className="text-right">
@@ -412,11 +473,79 @@ export default function MarketAnalysis() {
          />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-gray-100 p-4 rounded h-32">News 1</div>
         <div className="bg-gray-100 p-4 rounded h-32">News 2</div>
         <div className="bg-gray-100 p-4 rounded h-32">News 3</div>
       </div>
+
+      {/* Taiwan Board */}
+      <div className="border border-gray-200 rounded shadow-sm bg-white p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-bold text-lg">Taiwan Board</h2>
+        </div>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Filter by symbol or name..."
+            value={tickerSearch}
+            onChange={(e) => setTickerSearch(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm"
+          />
+        </div>
+        <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 bg-white border-b-2 border-gray-300">
+              <tr className="text-gray-600">
+                <th className="py-2 px-2 w-8"></th>
+                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('symbol')}>SYMBOL {tickerSortIcon('symbol')}</th>
+                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('name')}>EXCHANGE / INFO {tickerSortIcon('name')}</th>
+                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('industry')}>INDUSTRY {tickerSortIcon('industry')}</th>
+                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('price')}>PRICE {tickerSortIcon('price')}</th>
+                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('change')}>CHANGE {tickerSortIcon('change')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTickers.length > 0 ? filteredTickers.map((t, idx) => (
+                <tr key={idx} className="border-b hover:bg-gray-50 cursor-pointer transition" onClick={() => navigate(`/analysis/${t.symbol}`)}>
+                  <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button type="button" onClick={() => toggleWatchlist(t.symbol, t.name, 'stock')} className="text-base leading-none transition">
+                      <span className={isWatched(t.symbol) ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}>★</span>
+                    </button>
+                  </td>
+                  <td className="py-3 px-2 font-bold text-blue-600">{t.symbol}</td>
+                  <td className="py-3 px-2 text-gray-700">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold text-gray-500 uppercase">{t.market || 'Unknown'}</span>
+                      <span>{t.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-gray-700 text-sm">{t.industry || 'Unknown'}</td>
+                  <td className="py-3 px-2 font-semibold text-right">{t.price}</td>
+                  <td className={`py-3 px-2 font-semibold text-right ${t.change?.includes('+') ? 'text-green-600' : t.change?.includes('-') ? 'text-red-600' : 'text-gray-400'}`}>{t.change}</td>
+                </tr>
+              )) : (
+                <tr><td colSpan={6} className="py-4 text-center text-gray-500">No tickers match your filter.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">Showing {filteredTickers.length} of {tickers.length} stocks</p>
+      </div>
+
+      {tradeModal.open && (
+        <TradeModal
+          ticker={activeTicker}
+          companyName={companyName}
+          currentPrice={latestClose}
+          side={tradeModal.side}
+          onClose={() => setTradeModal({ open: false, side: 'BUY' })}
+          onSuccess={() => {
+            setTradeSuccess(`${tradeModal.side} order for ${activeTicker} confirmed.`);
+            setTimeout(() => setTradeSuccess(''), 4000);
+          }}
+        />
+      )}
     </div>
   );
 }

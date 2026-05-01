@@ -135,3 +135,19 @@ export const addToWatchlist = async (symbol: string, name: string, item_type: st
 export const removeFromWatchlist = async (symbol: string) => {
   await api.delete(`/watchlist/${encodeURIComponent(symbol)}`);
 };
+
+// 9. Trades
+export const submitTrade = async (symbol: string, name: string, side: string, type: string, price: number, volume: number) => {
+  const response = await api.post(`/trades`, { symbol, name, side, type, price, volume });
+  return response.data;
+};
+
+export const fetchTrades = async () => {
+  const response = await api.get(`/trades`);
+  return response.data;
+};
+
+export const fetchPosition = async (symbol: string) => {
+  const response = await api.get(`/trades/position/${encodeURIComponent(symbol)}`);
+  return response.data;
+};

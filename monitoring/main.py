@@ -11,8 +11,9 @@ from auth import (
     verify_password, create_access_token, create_refresh_token,
     decode_token, get_current_user,
     get_watchlist, add_to_watchlist, remove_from_watchlist,
+    create_trade, get_trades, get_net_position,
     RegisterRequest, LoginRequest, RefreshRequest, TokenResponse, UserOut,
-    WatchlistAddRequest,
+    WatchlistAddRequest, TradeRequest,
 )
 import os
 import asyncio
@@ -699,6 +700,39 @@ async def add_watchlist_item(body: WatchlistAddRequest, current_user: dict = Dep
 @app.delete("/api/watchlist/{symbol}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_watchlist_item(symbol: str, current_user: dict = Depends(get_current_user)):
     await remove_from_watchlist(app.state.db_pool, current_user["id"], symbol)
+
+
+# ---------------------------------------------------------------------------
+# Trade endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/api/trades", status_code=status.HTTP_201_CREATED)
+async def submit_trade(body: TradeRequest, current_user: dict = Depends(get_current_user)):
+    if body.side.upper() not in ("BUY", "SELL"):
+        raise HTTPException(status_code=400, detail="side must be BUY or SELL")
+    if body.volume <= 0:
+        raise HTTPException(status_code=400, detail="volume must be positive")
+    if body.side.upper() == "SELL":
+        net = await get_net_position(app.state.db_pool, current_user["id"], body.symbol)
+        if net < body.volume:
+            raise HTTPException(status_code=400, detail=f"Insufficient holdings: you hold {net} shares")
+    trade = await create_trade(
+        app.state.db_pool, current_user["id"],
+        body.symbol, body.name, body.side, body.type, body.price, body.volume,
+    )
+    return trade
+
+
+@app.get("/api/trades")
+async def list_trades(current_user: dict = Depends(get_current_user)):
+    trades = await get_trades(app.state.db_pool, current_user["id"])
+    return {"trades": trades}
+
+
+@app.get("/api/trades/position/{symbol}")
+async def position(symbol: str, current_user: dict = Depends(get_current_user)):
+    net = await get_net_position(app.state.db_pool, current_user["id"], symbol)
+    return {"symbol": symbol, "net_position": net}
 
 
 @app.get("/api/data/index-history/{index_name}")
