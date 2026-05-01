@@ -1,9 +1,24 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
+import { getTickers } from '../api/endpoints';
 
 export default function WatchlistPage() {
   const { watchlistItems, toggleWatchlist } = useWatchlist();
   const navigate = useNavigate();
+  const [priceMap, setPriceMap] = useState<Record<string, { price: string; change: string }>>({});
+
+  useEffect(() => {
+    getTickers()
+      .then((data) => {
+        const map: Record<string, { price: string; change: string }> = {};
+        for (const t of data.tickers || []) {
+          map[t.symbol] = { price: t.price, change: t.change };
+        }
+        setPriceMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="p-8 text-gray-800">
@@ -25,6 +40,8 @@ export default function WatchlistPage() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Symbol</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Type</th>
+                <th className="text-right px-4 py-3 font-semibold text-gray-700">Price</th>
+                <th className="text-right px-4 py-3 font-semibold text-gray-700">Change</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Added</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -42,6 +59,15 @@ export default function WatchlistPage() {
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${item.item_type === 'index' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                       {item.item_type === 'index' ? 'Index' : 'Stock'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                    {priceMap[item.symbol]?.price ?? '—'}
+                  </td>
+                  <td className={`px-4 py-3 text-right font-semibold text-sm ${
+                    priceMap[item.symbol]?.change?.includes('+') ? 'text-green-600' :
+                    priceMap[item.symbol]?.change?.includes('-') ? 'text-red-600' : 'text-gray-400'
+                  }`}>
+                    {priceMap[item.symbol]?.change ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {new Date(item.added_at).toLocaleDateString()}

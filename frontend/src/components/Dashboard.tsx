@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [searchFilter, setSearchFilter] = useState('');
   const navigate = useNavigate();
-  const { isWatched, toggleWatchlist } = useWatchlist();
+  const { isWatched, toggleWatchlist, watchlistItems } = useWatchlist();
 
   useEffect(() => {
     fetchTickersList();
@@ -172,6 +172,18 @@ export default function Dashboard() {
   const industryIndices = indices.filter((idx) => idx.group === 'industry');
   const conceptIndices = indices.filter((idx) => idx.group === 'concept');
 
+  // Watchlist movers: join watchlist stocks with live ticker data, sort by |change|
+  const watchlistMovers = watchlistItems
+    .filter((w) => w.item_type === 'stock')
+    .map((w) => {
+      const ticker = tickers.find((t) => t.symbol === w.symbol);
+      if (!ticker) return null;
+      const changeNum = parseFloat(ticker.change) || 0;
+      return { ...ticker, absChange: Math.abs(changeNum), changeNum };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => b.absChange - a.absChange);
+
   const filteredAndSortedTickers = tickers
     .filter((t) => {
       const search = searchFilter.toLowerCase();
@@ -196,6 +208,31 @@ export default function Dashboard() {
 
   return (
     <div className="p-8 text-gray-800">
+      {watchlistMovers.length > 0 && (
+        <div className="mb-6 bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
+          <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Watchlist Movers</span>
+            <span className="text-xs text-gray-400">sorted by volatility</span>
+          </div>
+          <div className="flex overflow-x-auto divide-x divide-gray-100">
+            {watchlistMovers.map((t: any) => (
+              <button
+                key={t.symbol}
+                type="button"
+                onClick={() => navigate(`/analysis/${t.symbol}`)}
+                className="flex-shrink-0 px-5 py-3 text-left hover:bg-gray-50 transition min-w-[130px]"
+              >
+                <div className="font-bold text-gray-900 text-sm">{t.symbol}</div>
+                <div className="text-xs text-gray-500 truncate max-w-[110px]">{t.name}</div>
+                <div className="mt-1 font-semibold text-sm">{t.price}</div>
+                <div className={`text-xs font-semibold ${t.changeNum >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {t.change}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-red-600 font-bold text-lg">Regulatory Alert List</h2>
