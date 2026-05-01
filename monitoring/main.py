@@ -1,11 +1,19 @@
 from contextlib import suppress
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from scrape import fetch_intraday, fetch_historical_5y, fetch_twse_tickers, fetch_all_intraday, fetch_all_sectors, fetch_all_indices, get_index_constituents, fetch_index_history
 from analysis_utils import build_analysis_payload
 from supervision_utils import score_stock, scan_all_stocks
+from auth import (
+    create_db_pool, create_user, get_user_by_username,
+    verify_password, create_access_token, create_refresh_token,
+    decode_token, get_current_user,
+    get_watchlist, add_to_watchlist, remove_from_watchlist,
+    RegisterRequest, LoginRequest, RefreshRequest, TokenResponse, UserOut,
+    WatchlistAddRequest,
+)
 import os
 import asyncio
 from datetime import datetime, timedelta
@@ -98,6 +106,7 @@ async def _hourly_intraday_refresh_loop():
 
 @app.on_event("startup")
 async def startup_tasks():
+    app.state.db_pool = await create_db_pool()
     app.state.intraday_refresh_lock = asyncio.Lock()
     app.state.hourly_intraday_refresh_task = asyncio.create_task(_hourly_intraday_refresh_loop())
 
@@ -109,14 +118,64 @@ async def shutdown_tasks():
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+    pool = getattr(app.state, "db_pool", None)
+    if pool is not None:
+        await pool.close()
 
 
 @app.get("/")
 def read_root():
     return {"message": "Stock Monitor Backend is running."}
 
+
+# ---------------------------------------------------------------------------
+# Auth endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+async def register(body: RegisterRequest):
+    """Create a new user account."""
+    if len(body.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    user = await create_user(app.state.db_pool, body.username, body.email, body.password)
+    return user
+
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def login(body: LoginRequest):
+    """Authenticate and return access + refresh tokens."""
+    user = await get_user_by_username(app.state.db_pool, body.username)
+    if not user or not verify_password(body.password, user["hashed_password"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Incorrect username or password")
+    token_data = {"sub": str(user["id"])}
+    return TokenResponse(
+        access_token=create_access_token(token_data),
+        refresh_token=create_refresh_token(token_data),
+    )
+
+
+@app.post("/api/auth/refresh", response_model=TokenResponse)
+async def refresh(body: RefreshRequest):
+    """Exchange a valid refresh token for a new access token."""
+    payload = decode_token(body.refresh_token, expected_type="refresh")
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    token_data = {"sub": user_id}
+    return TokenResponse(
+        access_token=create_access_token(token_data),
+        refresh_token=create_refresh_token(token_data),
+    )
+
+
+@app.get("/api/auth/me", response_model=UserOut)
+async def me(current_user: dict = Depends(get_current_user)):
+    """Return the currently authenticated user."""
+    return current_user
+
 @app.post("/api/refresh/tickers")
-def refresh_tickers():
+def refresh_tickers(_user: dict = Depends(get_current_user)):
     """Scrape and update the internal list of all available Taiwanese stocks."""
     try:
         tickers = fetch_twse_tickers()
@@ -125,7 +184,7 @@ def refresh_tickers():
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/refresh/intraday/all")
-async def refresh_all_intraday_data(limit: int = Query(None, description="Limit the number of stocks scraped for testing purposes.")):
+async def refresh_all_intraday_data(limit: int = Query(None), _user: dict = Depends(get_current_user)):
     """Trigger a massive scrape of intraday data for all listed Taiwanese stocks."""
     try:
         results = await _run_intraday_refresh(limit=limit)
@@ -139,7 +198,7 @@ async def refresh_all_intraday_data(limit: int = Query(None, description="Limit 
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/refresh/intraday/{ticker}")
-def refresh_intraday(ticker: str):
+def refresh_intraday(ticker: str, _user: dict = Depends(get_current_user)):
     """Trigger a scrape for the latest hourly intraday data."""
     try:
         filepath = fetch_intraday(ticker)
@@ -148,7 +207,7 @@ def refresh_intraday(ticker: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/refresh/historical/{ticker}")
-def refresh_historical(ticker: str):
+def refresh_historical(ticker: str, _user: dict = Depends(get_current_user)):
     """Trigger a scrape for the past 5 years of daily data."""
     try:
         filepath = fetch_historical_5y(ticker)
@@ -157,7 +216,7 @@ def refresh_historical(ticker: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/data/tickers")
-def get_tickers():
+def get_tickers(_user: dict = Depends(get_current_user)):
     """Reads the cached ticker list and returns it along with latest intraday data and industry if available."""
     filepath = os.path.join(DATA_DIR, "twse_tickers.txt")
     if not os.path.exists(filepath):
@@ -244,7 +303,7 @@ def get_tickers():
 
 
 @app.get("/api/analysis/{ticker}")
-def get_analysis(ticker: str):
+def get_analysis(ticker: str, _user: dict = Depends(get_current_user)):
     """Returns historical chart data plus server-side indicators for a ticker."""
     try:
         payload = build_analysis_payload(ticker)
@@ -253,7 +312,7 @@ def get_analysis(ticker: str):
     return payload
 
 @app.get("/api/data/intraday/{ticker}")
-def get_intraday(ticker: str):
+def get_intraday(ticker: str, _user: dict = Depends(get_current_user)):
     """Reads the temporary intraday text file and returns it."""
     if not ticker.endswith(".TW") and not ticker.endswith(".TWO"):
         ticker = f"{ticker}.TW"
@@ -268,7 +327,7 @@ def get_intraday(ticker: str):
     return {"ticker": ticker, "data": content}
 
 @app.get("/api/data/historical/{ticker}")
-def get_historical(ticker: str):
+def get_historical(ticker: str, _user: dict = Depends(get_current_user)):
     """Reads the temporary 5-year historical text file and returns it."""
     if not ticker.endswith(".TW") and not ticker.endswith(".TWO"):
         ticker = f"{ticker}.TW"
@@ -288,7 +347,7 @@ def get_historical(ticker: str):
 
 
 @app.post("/api/refresh/sectors")
-async def refresh_sectors():
+async def refresh_sectors(_user: dict = Depends(get_current_user)):
     """Fetches and updates sector/industry information for all Taiwanese stocks."""
     try:
         sectors_data = await fetch_all_sectors()
@@ -298,7 +357,7 @@ async def refresh_sectors():
 
 
 @app.get("/api/data/sectors")
-def get_sectors_overview():
+def get_sectors_overview(_user: dict = Depends(get_current_user)):
     """
     Returns a comprehensive overview of all sectors/industries with:
     - List of sectors and their counts
@@ -415,7 +474,7 @@ def get_sectors_overview():
 
 
 @app.get("/api/data/sectors/{sector_name}")
-def get_sector_details(sector_name: str):
+def get_sector_details(sector_name: str, _user: dict = Depends(get_current_user)):
     """
     Returns detailed information about a specific sector including:
     - All stocks in the sector
@@ -499,7 +558,7 @@ def get_sector_details(sector_name: str):
 
 
 @app.post("/api/refresh/indices")
-async def refresh_indices():
+async def refresh_indices(_user: dict = Depends(get_current_user)):
     """Fetches and updates Taiwan indices data."""
     try:
         indices_data = await fetch_all_indices()
@@ -509,7 +568,7 @@ async def refresh_indices():
 
 
 @app.get("/api/data/indices")
-def get_indices():
+def get_indices(_user: dict = Depends(get_current_user)):
     """
     Returns the cached official Taiwan index list with current values and performance.
     """
@@ -547,7 +606,7 @@ def get_indices():
 
 
 @app.get("/api/data/indices/{sector_or_index}")
-def get_index_constituents_endpoint(sector_or_index: str):
+def get_index_constituents_endpoint(sector_or_index: str, _user: dict = Depends(get_current_user)):
     """
     Returns constituent stocks for a given sector or index.
     Stocks are sorted by performance (best to worst).
@@ -574,7 +633,7 @@ def get_index_constituents_endpoint(sector_or_index: str):
 
 
 @app.get("/api/supervision/scan")
-def get_supervision_scan():
+def get_supervision_scan(_user: dict = Depends(get_current_user)):
     """
     Scans all stocks with cached historical data and returns a risk-sorted list.
     Only returns stocks with MEDIUM risk or above (score >= 20) to keep the response lean.
@@ -592,7 +651,7 @@ def get_supervision_scan():
 
 
 @app.get("/api/supervision/{ticker}")
-def get_supervision_detail(ticker: str):
+def get_supervision_detail(ticker: str, _user: dict = Depends(get_current_user)):
     """Returns detailed supervision signals for a single stock."""
     symbol = ticker.replace(".TW", "").replace(".TWO", "")
     try:
@@ -621,8 +680,29 @@ def get_supervision_detail(ticker: str):
         raise HTTPException(status_code=500, detail=f"Supervision detail failed: {str(e)}")
 
 
+# ---------------------------------------------------------------------------
+# Watchlist endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/watchlist")
+async def get_user_watchlist(current_user: dict = Depends(get_current_user)):
+    items = await get_watchlist(app.state.db_pool, current_user["id"])
+    return {"items": items}
+
+
+@app.post("/api/watchlist", status_code=status.HTTP_201_CREATED)
+async def add_watchlist_item(body: WatchlistAddRequest, current_user: dict = Depends(get_current_user)):
+    item = await add_to_watchlist(app.state.db_pool, current_user["id"], body.symbol, body.name, body.item_type)
+    return item
+
+
+@app.delete("/api/watchlist/{symbol}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_watchlist_item(symbol: str, current_user: dict = Depends(get_current_user)):
+    await remove_from_watchlist(app.state.db_pool, current_user["id"], symbol)
+
+
 @app.get("/api/data/index-history/{index_name}")
-def get_index_history(index_name: str):
+def get_index_history(index_name: str, _user: dict = Depends(get_current_user)):
     """
     Returns up to 60 daily closing prices for a named TWSE index.
     Fetches from TWSE MI_INDEX API and caches per index per day.
@@ -639,7 +719,7 @@ def get_index_history(index_name: str):
 
 
 @app.get("/api/data/index-list")
-def get_index_list():
+def get_index_list(_user: dict = Depends(get_current_user)):
     """
     Returns the official Taiwan index list cache. Refreshes it if missing.
     """
@@ -650,4 +730,4 @@ def get_index_list():
         except Exception as e:
             raise HTTPException(status_code=404, detail=f"Index list not found and refresh failed: {str(e)}")
 
-    return get_indices()
+    return get_indices(_user)

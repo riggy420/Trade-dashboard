@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { refreshTickers, refreshAllIntradayData, getTickers, fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
+import { useWatchlist } from '../context/WatchlistContext';
 
 type SortField = 'symbol' | 'name' | 'price' | 'change' | 'industry' | null;
 type SortOrder = 'asc' | 'desc';
@@ -21,12 +22,25 @@ export default function Dashboard() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [searchFilter, setSearchFilter] = useState('');
   const navigate = useNavigate();
+  const { isWatched, toggleWatchlist } = useWatchlist();
 
   useEffect(() => {
     fetchTickersList();
     fetchIndicesData();
     fetchSectorsData();
+    fetchSupervisionAlerts();
   }, []);
+
+  const fetchSupervisionAlerts = async () => {
+    setSupervisionLoading(true);
+    try {
+      const data = await fetchSupervisionScan();
+      setSupervisionAlerts(data.stocks || []);
+    } catch (e) {
+      console.error("Failed to load supervision scan:", e);
+    }
+    setSupervisionLoading(false);
+  };
 
   const fetchTickersList = async () => {
     try {
@@ -183,17 +197,63 @@ export default function Dashboard() {
   return (
     <div className="p-8 text-gray-800">
       <div className="mb-8">
-        <h2 className="text-red-500 font-bold mb-4">Regulatory Alert List</h2>
-        <div className="flex gap-4">
-          <div className="border border-red-200 bg-red-50 p-4 rounded w-1/2">
-            <h3 className="font-bold text-red-700">TSLA (Tesla, Inc.)</h3>
-            <p className="text-sm">Formal investigation launched regarding autonomous driving...</p>
-          </div>
-          <div className="border border-red-200 bg-red-50 p-4 rounded w-1/2">
-            <h3 className="font-bold text-red-700">META (Meta Platforms)</h3>
-            <p className="text-sm">New antitrust filing concerning cross-platform advertising...</p>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-red-600 font-bold text-lg">Regulatory Alert List</h2>
+          {!supervisionLoading && supervisionAlerts.length > 0 && (
+            <span className="text-xs text-gray-500">
+              {supervisionAlerts.filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH').length} flagged stocks
+            </span>
+          )}
         </div>
+        {supervisionLoading ? (
+          <p className="text-sm text-gray-400 italic">Scanning stocks for regulatory signals...</p>
+        ) : supervisionAlerts.length === 0 ? (
+          <p className="text-sm text-gray-500">No supervision data available. Ensure historical data is loaded.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {supervisionAlerts
+              .filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH')
+              .slice(0, 6)
+              .map((alert: any, i: number) => (
+                <div
+                  key={i}
+                  className={`border rounded p-4 cursor-pointer hover:shadow-md transition ${alert.risk_level === 'CRITICAL' ? 'border-red-300 bg-red-50' : 'border-orange-200 bg-orange-50'}`}
+                  onClick={() => navigate(`/analysis/${alert.symbol}`)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-gray-900">{alert.symbol}</span>
+                      <span className="ml-2 text-sm text-gray-600 truncate">{alert.name}</span>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded shrink-0 ${alert.risk_level === 'CRITICAL' ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}`}>
+                      {alert.risk_level}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full ${alert.risk_level === 'CRITICAL' ? 'bg-red-500' : 'bg-orange-400'}`}
+                        style={{ width: `${alert.total_score}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700 shrink-0">{alert.total_score}/100</span>
+                  </div>
+                  {alert.triggered_articles.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {alert.triggered_articles.map((art: string, j: number) => (
+                        <span key={j} className="text-xs bg-white border border-gray-300 text-gray-700 px-1.5 py-0.5 rounded">
+                          {art}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            {supervisionAlerts.filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH').length === 0 && (
+              <p className="text-sm text-green-700 col-span-3">No HIGH or CRITICAL risk stocks detected.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Taiwan Indices Overview */}
@@ -219,29 +279,38 @@ export default function Dashboard() {
             </div>
             <div className="max-h-72 overflow-y-auto pr-1 space-y-2">
               {industryIndices.length > 0 ? industryIndices.map((idx, i) => (
-                <button
-                  key={`industry-${i}`}
-                  type="button"
-                  onClick={() => {
-                    setSelectedIndex(idx);
-                    fetchConstituentsData(idx.name);
-                    fetchIndexHistoryData(idx.name);
-                  }}
-                  className={`w-full text-left border rounded-lg px-3 py-3 transition hover:shadow-sm ${selectedIndex?.name === idx.name ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-gray-800">{idx.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{idx.category}</p>
+                <div key={`industry-${i}`} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedIndex(idx);
+                      fetchConstituentsData(idx.name);
+                      fetchIndexHistoryData(idx.name);
+                    }}
+                    className={`w-full text-left border rounded-lg px-3 py-3 transition hover:shadow-sm ${selectedIndex?.name === idx.name ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-gray-800">{idx.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{idx.category}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-gray-900">{idx.price ?? '-'}</p>
+                        <p className={`text-xs ${idx.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {idx.change !== null ? `${idx.change >= 0 ? '+' : ''}${idx.change}%` : '-'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-bold text-gray-900">{idx.price ?? '-'}</p>
-                      <p className={`text-xs ${idx.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {idx.change !== null ? `${idx.change >= 0 ? '+' : ''}${idx.change}%` : '-'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleWatchlist(idx.name, idx.name, 'index'); }}
+                    className="absolute top-2 right-2 text-base leading-none transition"
+                    title={isWatched(idx.name) ? 'Remove from watchlist' : 'Add to watchlist'}
+                  >
+                    <span className={isWatched(idx.name) ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}>★</span>
+                  </button>
+                </div>
               )) : <p className="text-sm text-gray-500">No industry indexes loaded.</p>}
             </div>
           </div>
@@ -256,29 +325,38 @@ export default function Dashboard() {
             </div>
             <div className="max-h-72 overflow-y-auto pr-1 space-y-2">
               {conceptIndices.length > 0 ? conceptIndices.map((idx, i) => (
-                <button
-                  key={`concept-${i}`}
-                  type="button"
-                  onClick={() => {
-                    setSelectedIndex(idx);
-                    fetchConstituentsData(idx.name);
-                    fetchIndexHistoryData(idx.name);
-                  }}
-                  className={`w-full text-left border rounded-lg px-3 py-3 transition hover:shadow-sm ${selectedIndex?.name === idx.name ? 'border-amber-500 bg-amber-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-gray-800">{idx.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{idx.category}</p>
+                <div key={`concept-${i}`} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedIndex(idx);
+                      fetchConstituentsData(idx.name);
+                      fetchIndexHistoryData(idx.name);
+                    }}
+                    className={`w-full text-left border rounded-lg px-3 py-3 transition hover:shadow-sm ${selectedIndex?.name === idx.name ? 'border-amber-500 bg-amber-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-gray-800">{idx.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{idx.category}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-gray-900">{idx.price ?? '-'}</p>
+                        <p className={`text-xs ${idx.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {idx.change !== null ? `${idx.change >= 0 ? '+' : ''}${idx.change}%` : '-'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-bold text-gray-900">{idx.price ?? '-'}</p>
-                      <p className={`text-xs ${idx.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {idx.change !== null ? `${idx.change >= 0 ? '+' : ''}${idx.change}%` : '-'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleWatchlist(idx.name, idx.name, 'index'); }}
+                    className="absolute top-2 right-2 text-base leading-none transition"
+                    title={isWatched(idx.name) ? 'Remove from watchlist' : 'Add to watchlist'}
+                  >
+                    <span className={isWatched(idx.name) ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}>★</span>
+                  </button>
+                </div>
               )) : <p className="text-sm text-gray-500">No concept indexes loaded.</p>}
             </div>
           </div>
@@ -433,7 +511,8 @@ export default function Dashboard() {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 bg-white border-b-2 border-gray-300">
               <tr className="text-gray-600">
-                <th 
+                <th className="py-2 px-2 w-8"></th>
+                <th
                   className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold"
                   onClick={() => handleSort('symbol')}
                 >
@@ -469,6 +548,16 @@ export default function Dashboard() {
               {filteredAndSortedTickers.length > 0 ? (
                 filteredAndSortedTickers.map((t, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50 cursor-pointer transition" onClick={() => navigate(`/analysis/${t.symbol}`)}>
+                    <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => toggleWatchlist(t.symbol, t.name, 'stock')}
+                        className="text-base leading-none transition"
+                        title={isWatched(t.symbol) ? 'Remove from watchlist' : 'Add to watchlist'}
+                      >
+                        <span className={isWatched(t.symbol) ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}>★</span>
+                      </button>
+                    </td>
                     <td className="py-3 px-2 font-bold text-blue-600">{t.symbol}</td>
                     <td className="py-3 px-2 text-gray-700">
                       <div className="flex flex-col gap-1">
@@ -485,7 +574,7 @@ export default function Dashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-gray-500">No tickers match your filter.</td>
+                  <td colSpan={6} className="py-4 text-center text-gray-500">No tickers match your filter.</td>
                 </tr>
               )}
             </tbody>

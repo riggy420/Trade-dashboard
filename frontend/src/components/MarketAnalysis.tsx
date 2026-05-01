@@ -49,6 +49,7 @@ export default function MarketAnalysis() {
   const [latestVolume, setLatestVolume] = useState<number>(0);
   const [averageVolume5, setAverageVolume5] = useState<number>(0);
   const [volatility, setVolatility] = useState<number>(0);
+  const [latestClose, setLatestClose] = useState<number | null>(null);
   const [showSma5, setShowSma5] = useState<boolean>(true);
   const [showEma5, setShowEma5] = useState<boolean>(true);
   const [showRsi14, setShowRsi14] = useState<boolean>(true);
@@ -206,6 +207,7 @@ export default function MarketAnalysis() {
         setLatestVolume(analysisResponse.latestVolume ?? 0);
         setAverageVolume5(analysisResponse.averageVolume5 ?? 0);
         setVolatility(analysisResponse.volatility ?? 0);
+        setLatestClose(analysisResponse.latestClose ?? null);
       } catch (err) {
         console.error('Error fetching historical data:', err);
       } finally {
@@ -249,21 +251,34 @@ export default function MarketAnalysis() {
   const latestMfi = latestRow?.MFI14 ?? null;
   const latestSma5 = latestRow?.SMA5 ?? null;
   const latestEma5 = latestRow?.EMA5 ?? null;
+  const latestOpen: number | null = latestRow?.open ?? null;
 
   const activeIndicatorLabel = indicatorLabels[indicatorSearch] || 'All indicators';
 
   return (
     <div className="p-8 text-gray-800">
       <div className="flex flex-col gap-4 mb-6">
-         <h1 className="text-2xl font-bold bg-white px-4 py-3 rounded shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
-             <span>{activeTicker} - {companyName}</span>
-             {recentPercentChange !== null && (
-               <span className={`text-sm font-normal ml-3 ${recentPercentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                 {recentPercentChange >= 0 ? '+' : ''}{recentPercentChange.toFixed(2)}%
+         <div className="bg-white px-4 py-3 rounded shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 flex items-center justify-between gap-6">
+           <div>
+             <div className="flex items-baseline gap-3">
+               <span className="text-3xl font-black text-gray-900">
+                 {latestClose !== null ? `NT$${latestClose.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                </span>
-             )}
-             {loading && <span className="text-sm font-normal text-gray-400 ml-2">(Fetching 5y data...)</span>}
-         </h1>
+               {recentPercentChange !== null && (
+                 <span className={`text-sm font-semibold px-2 py-0.5 rounded ${recentPercentChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                   {recentPercentChange >= 0 ? '+' : ''}{recentPercentChange.toFixed(2)}%
+                 </span>
+               )}
+             </div>
+             <div className="text-sm text-gray-500 mt-1">
+               Open: {latestOpen !== null ? `NT$${latestOpen.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+             </div>
+           </div>
+           <div className="text-right">
+             <h1 className="text-xl font-bold text-gray-900">{activeTicker} — {companyName}</h1>
+             {loading && <span className="text-xs text-gray-400">Fetching 5y data...</span>}
+           </div>
+         </div>
          <div className="flex flex-wrap gap-4 items-center bg-white border border-gray-200 rounded px-4 py-3 shadow-sm transition-all duration-300 hover:shadow-md">
            <div className="text-sm text-gray-500">
              Search focus: {activeIndicatorLabel}
