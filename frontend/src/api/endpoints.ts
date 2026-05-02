@@ -1,7 +1,6 @@
 import axios from "axios";
 import api from "./axiosInstance";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "./config";
 
 // 1. Auth (uses plain axios — no token needed for these calls)
 export const loginUser = async (username: string, password: string) => {

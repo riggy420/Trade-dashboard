@@ -1,3 +1,4 @@
+import asyncio
 import os
 import urllib.parse
 
@@ -78,14 +79,23 @@ async def _ensure_database_exists():
 
 async def create_db_pool() -> asyncpg.Pool:
     await _ensure_database_exists()
-    pool = await asyncpg.create_pool(DB_URL, min_size=2, max_size=10)
-    async with pool.acquire() as conn:
-        await conn.execute(CREATE_USERS_TABLE)
-        await conn.execute(CREATE_WATCHLIST_TABLE)
-        await conn.execute(CREATE_TRADES_TABLE)
-        await conn.execute(MIGRATE_TRADES_LIMIT_PRICE)
-    print("DB pool created and schema ensured.")
-    return pool
+    last_err = None
+    for attempt in range(5):
+        try:
+            pool = await asyncpg.create_pool(DB_URL, min_size=2, max_size=10)
+            async with pool.acquire() as conn:
+                await conn.execute(CREATE_USERS_TABLE)
+                await conn.execute(CREATE_WATCHLIST_TABLE)
+                await conn.execute(CREATE_TRADES_TABLE)
+                await conn.execute(MIGRATE_TRADES_LIMIT_PRICE)
+            print("DB pool created and schema ensured.")
+            return pool
+        except (ConnectionRefusedError, OSError) as e:
+            last_err = e
+            if attempt < 4:
+                print(f"DB not ready, retrying in 2s (attempt {attempt + 1}/5)...")
+                await asyncio.sleep(2)
+    raise last_err  # type: ignore[misc]
 
 # ---------------------------------------------------------------------------
 # User helpers

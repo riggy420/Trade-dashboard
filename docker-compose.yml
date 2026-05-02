@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: equititrack
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --save 60 1
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./monitoring
+    environment:
+      DATABASE_URL: postgres://postgres:admin@db:5432/equititrack
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET_KEY: assessment-secret-key-change-in-production
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./monitoring/data:/app/data
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  redisdata:

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
-
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../api/config';
 
 interface User {
   id: number;
