@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchTrades, fetchPendingOrders, cancelPendingOrder } from '../api/endpoints';
+import { fetchTrades, fetchPendingOrders, cancelPendingOrder, deleteTrade } from '../api/endpoints';
+import EditTradeModal from './EditTradeModal';
 
 interface Trade {
   id: number;
@@ -11,6 +12,7 @@ interface Trade {
   volume: number;
   total_value: number;
   limit_price: number | null;
+  asset_type?: string;
   traded_at: string;
 }
 
@@ -20,6 +22,7 @@ const fmt = (n: number) =>
 export default function ReportsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = () => {
@@ -38,6 +41,14 @@ export default function ReportsPage() {
     try {
       await cancelPendingOrder(orderId);
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch {}
+  };
+
+  const handleDelete = async (tradeId: number) => {
+    if (!window.confirm('Delete this trade? This cannot be undone.')) return;
+    try {
+      await deleteTrade(tradeId);
+      setTrades((prev) => prev.filter((t) => t.id !== tradeId));
     } catch {}
   };
 
@@ -137,6 +148,7 @@ export default function ReportsPage() {
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Limit</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Volume</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Total Value</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -163,11 +175,24 @@ export default function ReportsPage() {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-700">{t.volume}</td>
                   <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(Number(t.total_value))}</td>
+                  <td className="px-4 py-3 text-center">
+                    <button onClick={(e) => { e.stopPropagation(); setEditingTrade(t); }}
+                      className="text-xs text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
+                      className="text-xs text-red-500 hover:text-red-700">Delete</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+      {editingTrade && (
+        <EditTradeModal
+          trade={editingTrade}
+          onClose={() => setEditingTrade(null)}
+          onSuccess={() => { setEditingTrade(null); loadData(); }}
+        />
       )}
     </div>
   );

@@ -53,6 +53,10 @@ MIGRATE_TRADES_LIMIT_PRICE = """
 ALTER TABLE trades ADD COLUMN IF NOT EXISTS limit_price NUMERIC(12,2);
 """
 
+MIGRATE_TRADES_ASSET_TYPE = """
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS asset_type VARCHAR(20) NOT NULL DEFAULT 'stock';
+"""
+
 # ---------------------------------------------------------------------------
 # Pool bootstrap
 # ---------------------------------------------------------------------------
@@ -88,6 +92,7 @@ async def create_db_pool() -> asyncpg.Pool:
                 await conn.execute(CREATE_WATCHLIST_TABLE)
                 await conn.execute(CREATE_TRADES_TABLE)
                 await conn.execute(MIGRATE_TRADES_LIMIT_PRICE)
+                await conn.execute(MIGRATE_TRADES_ASSET_TYPE)
             print("DB pool created and schema ensured.")
             return pool
         except (ConnectionRefusedError, OSError) as e:
@@ -177,17 +182,18 @@ async def remove_from_watchlist(pool: asyncpg.Pool, user_id: int, symbol: str) -
 
 async def create_trade(pool: asyncpg.Pool, user_id: int, symbol: str, name: str,
                        side: str, trade_type: str, price: float, volume: int,
-                       limit_price: float | None = None) -> dict:
+                       limit_price: float | None = None,
+                       asset_type: str = "stock") -> dict:
     total_value = round(price * volume, 2)
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO trades (user_id, symbol, name, side, type, price, volume, total_value, limit_price)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING id, symbol, name, side, type, price, volume, total_value, limit_price, traded_at
+            INSERT INTO trades (user_id, symbol, name, side, type, price, volume, total_value, limit_price, asset_type)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING id, symbol, name, side, type, price, volume, total_value, limit_price, asset_type, traded_at
             """,
             user_id, symbol, name, side.upper(), trade_type.upper(),
-            price, volume, total_value, limit_price,
+            price, volume, total_value, limit_price, asset_type,
         )
     return dict(row)
 
@@ -195,11 +201,50 @@ async def create_trade(pool: asyncpg.Pool, user_id: int, symbol: str, name: str,
 async def get_trades(pool: asyncpg.Pool, user_id: int) -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT id, symbol, name, side, type, price, volume, total_value, limit_price, traded_at "
+            "SELECT id, symbol, name, side, type, price, volume, total_value, limit_price, asset_type, traded_at "
             "FROM trades WHERE user_id = $1 ORDER BY traded_at DESC",
             user_id,
         )
     return [dict(r) for r in rows]
+
+
+async def update_trade(pool: asyncpg.Pool, trade_id: int, user_id: int, **fields) -> dict | None:
+    allowed = {"symbol", "name", "side", "type", "price", "volume", "limit_price", "asset_type"}
+    updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
+    if not updates:
+        return None
+    # Recalculate total_value if price or volume changed
+    price = updates.get("price", None)
+    volume = updates.get("volume", None)
+    if price is not None or volume is not None:
+        async with pool.acquire() as conn:
+            existing = await conn.fetchrow(
+                "SELECT price, volume FROM trades WHERE id=$1 AND user_id=$2", trade_id, user_id,
+            )
+            if existing is None:
+                return None
+            new_price = price if price is not None else float(existing["price"])
+            new_volume = volume if volume is not None else int(existing["volume"])
+            updates["total_value"] = round(new_price * new_volume, 2)
+    set_clause = ", ".join(f"{k}=${i+1}" for i, k in enumerate(updates.keys()))
+    if not set_clause:
+        return None
+    values = list(updates.values()) + [trade_id, user_id]
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            f"UPDATE trades SET {set_clause} WHERE id=${len(values)-1} AND user_id=${len(values)} RETURNING *",
+            *values,
+        )
+    return dict(row) if row else None
+
+
+async def delete_trade(pool: asyncpg.Pool, trade_id: int, user_id: int) -> bool:
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM trades WHERE id=$1 AND user_id=$2",
+            trade_id, user_id,
+        )
+    return result != "DELETE 0"
 
 
 async def get_net_position(pool: asyncpg.Pool, user_id: int, symbol: str) -> int:

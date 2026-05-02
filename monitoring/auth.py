@@ -105,7 +105,19 @@ class TradeRequest(BaseModel):
     type: str = "MARKET"  # "MARKET" or "LIMIT"
     price: float        # current market price (always sent)
     volume: int
-    limit_price: float | None = None  # required when type == "LIMIT"
+    limit_price: float | None = None
+    asset_type: str = "stock"  # "stock", "bond", "mutual_fund"
+
+
+class EditTradeRequest(BaseModel):
+    symbol: str | None = None
+    name: str | None = None
+    side: str | None = None
+    type: str | None = None
+    price: float | None = None
+    volume: int | None = None
+    limit_price: float | None = None
+    asset_type: str | None = None  # required when type == "LIMIT"
 
 
 class TokenResponse(BaseModel):

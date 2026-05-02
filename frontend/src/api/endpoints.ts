@@ -136,8 +136,8 @@ export const removeFromWatchlist = async (symbol: string) => {
 };
 
 // 9. Trades
-export const submitTrade = async (symbol: string, name: string, side: string, type: string, price: number, volume: number, limitPrice?: number) => {
-  const response = await api.post(`/trades`, { symbol, name, side, type, price, volume, limit_price: limitPrice ?? null });
+export const submitTrade = async (symbol: string, name: string, side: string, type: string, price: number, volume: number, limitPrice?: number, assetType?: string) => {
+  const response = await api.post(`/trades`, { symbol, name, side, type, price, volume, limit_price: limitPrice ?? null, asset_type: assetType ?? 'stock' });
   return response.data;
 };
 
@@ -163,4 +163,13 @@ export const fetchPendingOrders = async () => {
 
 export const cancelPendingOrder = async (orderId: string) => {
   await api.delete(`/trades/pending/${encodeURIComponent(orderId)}`);
+};
+
+export const updateTrade = async (tradeId: number, data: Record<string, unknown>) => {
+  const response = await api.put(`/trades/${tradeId}`, data);
+  return response.data;
+};
+
+export const deleteTrade = async (tradeId: number) => {
+  await api.delete(`/trades/${tradeId}`);
 };

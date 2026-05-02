@@ -10,6 +10,7 @@ from db.database import (
     create_db_pool, create_user, get_user_by_username,
     get_watchlist, add_to_watchlist, remove_from_watchlist,
     create_trade, get_trades, get_net_position, get_holdings,
+    update_trade, delete_trade,
 )
 from db.redis_client import (
     get_meta, get_all_meta,
@@ -20,7 +21,7 @@ from auth import (
     verify_password, create_access_token, create_refresh_token,
     decode_token, get_current_user,
     RegisterRequest, LoginRequest, RefreshRequest, TokenResponse, UserOut,
-    WatchlistAddRequest, TradeRequest,
+    WatchlistAddRequest, TradeRequest, EditTradeRequest,
 )
 import json
 import os
@@ -802,7 +803,7 @@ async def submit_trade(body: TradeRequest, current_user: dict = Depends(get_curr
     trade = await create_trade(
         app.state.db_pool, user_id,
         body.symbol, body.name, body.side, order_type, execution_price, body.volume,
-        body.limit_price,
+        body.limit_price, body.asset_type,
     )
     return trade
 
@@ -841,6 +842,25 @@ async def cancel_pending(order_id: str, current_user: dict = Depends(get_current
     if match is None:
         raise HTTPException(status_code=404, detail="Pending order not found")
     await remove_pending_order(order_id)
+    return None
+
+
+@app.put("/api/trades/{trade_id}")
+async def edit_trade(trade_id: int, body: EditTradeRequest, current_user: dict = Depends(get_current_user)):
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    trade = await update_trade(app.state.db_pool, trade_id, current_user["id"], **updates)
+    if trade is None:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    return trade
+
+
+@app.delete("/api/trades/{trade_id}", status_code=204)
+async def remove_trade(trade_id: int, current_user: dict = Depends(get_current_user)):
+    ok = await delete_trade(app.state.db_pool, trade_id, current_user["id"])
+    if not ok:
+        raise HTTPException(status_code=404, detail="Trade not found")
     return None
 
 
