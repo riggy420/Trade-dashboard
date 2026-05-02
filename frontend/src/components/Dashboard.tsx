@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers, fetchHoldings } from '../api/endpoints';
+import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers, fetchHoldings, fetchSymbolHistory } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 
@@ -15,11 +15,27 @@ export default function Dashboard() {
   const [supervisionAlerts, setSupervisionAlerts] = useState<any[]>([]);
   const [supervisionLoading, setSupervisionLoading] = useState(false);
   const [holdings, setHoldings] = useState<any[]>([]);
+  const [positionModal, setPositionModal] = useState<{ symbol: string; name: string } | null>(null);
+  const [positionHistory, setPositionHistory] = useState<any[]>([]);
+  const [positionHistoryLoading, setPositionHistoryLoading] = useState(false);
   const navigate = useNavigate();
   const { isWatched, toggleWatchlist, watchlistItems } = useWatchlist();
   const [tickers, setTickers] = useState<any[]>([]);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const handleOpenPosition = async (symbol: string, name: string) => {
+    setPositionModal({ symbol, name });
+    setPositionHistoryLoading(true);
+    try {
+      const data = await fetchSymbolHistory(symbol);
+      setPositionHistory(data.trades || []);
+    } catch {
+      setPositionHistory([]);
+    } finally {
+      setPositionHistoryLoading(false);
+    }
+  };
 
   const refreshLiveData = () => {
     fetchIndicesData();
@@ -219,7 +235,7 @@ export default function Dashboard() {
               <button
                 key={h.symbol}
                 type="button"
-                onClick={() => navigate(`/analysis/${h.symbol}`)}
+                onClick={() => handleOpenPosition(h.symbol, h.name)}
                 className="flex-shrink-0 px-5 py-3 text-left hover:bg-blue-50 transition min-w-[160px]"
               >
                 <div className="font-bold text-gray-900 text-sm">{h.symbol}</div>
@@ -554,6 +570,59 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {positionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPositionModal(null)}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-bold text-gray-900">
+                {positionModal.symbol} — {positionModal.name}
+              </h2>
+              <button onClick={() => setPositionModal(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <div className="overflow-y-auto max-h-[60vh]">
+              {positionHistoryLoading ? (
+                <p className="text-sm text-gray-400 italic p-6">Loading...</p>
+              ) : positionHistory.length === 0 ? (
+                <p className="text-sm text-gray-400 italic p-6">No trade history for this symbol.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-semibold text-gray-700">Date</th>
+                      <th className="text-left px-4 py-2 font-semibold text-gray-700">Side</th>
+                      <th className="text-left px-4 py-2 font-semibold text-gray-700">Type</th>
+                      <th className="text-right px-4 py-2 font-semibold text-gray-700">Price</th>
+                      <th className="text-right px-4 py-2 font-semibold text-gray-700">Volume</th>
+                      <th className="text-right px-4 py-2 font-semibold text-gray-700">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {positionHistory.map((t: any) => (
+                      <tr key={t.id} className="border-b border-gray-100">
+                        <td className="px-4 py-2 text-gray-500 text-xs whitespace-nowrap">
+                          {new Date(t.traded_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${t.side === 'BUY' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {t.side}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600">{t.type}</span>
+                        </td>
+                        <td className="px-4 py-2 text-right font-semibold">{fmtNT(Number(t.price))}</td>
+                        <td className="px-4 py-2 text-right text-gray-700">{t.volume}</td>
+                        <td className="px-4 py-2 text-right font-bold">{fmtNT(Number(t.total_value))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

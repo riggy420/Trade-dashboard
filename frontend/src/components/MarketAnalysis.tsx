@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers } from '../api/endpoints';
+import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers, refreshIntraday } from '../api/endpoints';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import TradeModal from './TradeModal';
 import { useWatchlist } from '../context/WatchlistContext';
@@ -42,7 +42,8 @@ export default function MarketAnalysis() {
   const { tickerId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const activeTicker = tickerId || '2330';
+  const isAllStocks = tickerId === 'all';
+  const activeTicker = isAllStocks ? '2330' : (tickerId || '2330');
   const searchParams = new URLSearchParams(location.search);
   const indicatorSearch = (searchParams.get('indicator') || '').toLowerCase();
   const [historicalData, setHistoricalData] = useState<any[]>([]);
@@ -212,9 +213,11 @@ export default function MarketAnalysis() {
   };
 
   useEffect(() => {
+    if (isAllStocks) return;
     setLoading(true);
     const loadData = async () => {
       try {
+        refreshIntraday(activeTicker).catch(() => {});
         const analysisResponse = await fetchAnalysisData(activeTicker);
         setCompanyName(analysisResponse.companyName || 'Unknown Company');
         setHistoricalData(analysisResponse.chartData || []);
@@ -230,7 +233,7 @@ export default function MarketAnalysis() {
       }
     };
     loadData();
-  }, [activeTicker]);
+  }, [activeTicker, isAllStocks]);
 
   const fetchTickersData = () => {
     getTickers()
@@ -335,6 +338,86 @@ export default function MarketAnalysis() {
       if (av > bv) return tickerSortOrder === 'asc' ? 1 : -1;
       return 0;
     });
+
+  const renderBoard = () => (
+    <div className="border border-gray-200 rounded shadow-sm bg-white p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="font-bold text-lg">Taiwan Board</h2>
+        <div className="flex items-center gap-3">
+          {nextRefresh !== null && (
+            <span className="text-xs text-gray-400 tabular-nums">
+              Next refresh at {new Date(nextRefresh).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button type="button" onClick={() => { doRefresh(); }}
+            className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded transition">
+            ↻ Refresh Now
+          </button>
+          <button type="button" onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`text-xs font-semibold px-3 py-1 rounded transition ${
+              autoRefresh ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'}`}>
+            {autoRefresh ? '⏱ Auto (1h) On' : '⏱ Auto (1h) Off'}
+          </button>
+        </div>
+      </div>
+      <div className="mb-4">
+        <input type="text" placeholder="Filter by symbol or name..."
+          value={tickerSearch} onChange={(e) => setTickerSearch(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm" />
+      </div>
+      <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-0 bg-white border-b-2 border-gray-300">
+            <tr className="text-gray-600">
+              <th className="py-2 px-2 w-8"></th>
+              <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('symbol')}>SYMBOL {tickerSortIcon('symbol')}</th>
+              <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('name')}>EXCHANGE / INFO {tickerSortIcon('name')}</th>
+              <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('industry')}>INDUSTRY {tickerSortIcon('industry')}</th>
+              <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('price')}>PRICE {tickerSortIcon('price')}</th>
+              <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('change')}>CHANGE {tickerSortIcon('change')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTickers.length > 0 ? filteredTickers.map((t, idx) => (
+              <tr key={idx} className="border-b hover:bg-gray-50 cursor-pointer transition" onClick={() => navigate(`/analysis/${t.symbol}`)}>
+                <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" onClick={() => toggleWatchlist(t.symbol, t.name, 'stock')} className="text-base leading-none transition">
+                    <span className={isWatched(t.symbol) ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}>★</span>
+                  </button>
+                </td>
+                <td className="py-3 px-2 font-bold text-blue-600">{t.symbol}</td>
+                <td className="py-3 px-2 text-gray-700">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-semibold text-gray-500 uppercase">{t.market || 'Unknown'}</span>
+                    <span>{t.name}</span>
+                  </div>
+                </td>
+                <td className="py-3 px-2 text-gray-700 text-sm">{t.industry || 'Unknown'}</td>
+                <td className="py-3 px-2 font-semibold text-right">{t.price}</td>
+                <td className={`py-3 px-2 font-semibold text-right ${t.change?.includes('+') ? 'text-green-600' : t.change?.includes('-') ? 'text-red-600' : 'text-gray-400'}`}>{t.change}</td>
+              </tr>
+            )) : (
+              <tr><td colSpan={6} className="py-4 text-center text-gray-500">No tickers match your filter.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-gray-500 mt-2">Showing {filteredTickers.length} of {tickers.length} stocks</p>
+    </div>
+  );
+
+  // /analysis/all — show only the Taiwan Board
+  if (isAllStocks) {
+    return (
+      <div className="p-8 text-gray-800">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Taiwan Board</h2>
+          <p className="text-sm text-gray-500 mt-1">All listed Taiwanese stocks with live prices</p>
+        </div>
+        {renderBoard()}
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 text-gray-800">
@@ -521,84 +604,7 @@ export default function MarketAnalysis() {
       </div>
 
       {/* Taiwan Board */}
-      <div className="border border-gray-200 rounded shadow-sm bg-white p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-bold text-lg">Taiwan Board</h2>
-          <div className="flex items-center gap-3">
-            {nextRefresh !== null && (
-              <span className="text-xs text-gray-400 tabular-nums">
-                Next refresh at {new Date(nextRefresh).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => { doRefresh(); }}
-              className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded transition"
-              title="Refresh now"
-            >
-              ↻ Refresh Now
-            </button>
-            <button
-              type="button"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`text-xs font-semibold px-3 py-1 rounded transition ${
-                autoRefresh
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
-              }`}
-            >
-              {autoRefresh ? '⏱ Auto (1h) On' : '⏱ Auto (1h) Off'}
-            </button>
-          </div>
-        </div>
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Filter by symbol or name..."
-            value={tickerSearch}
-            onChange={(e) => setTickerSearch(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm"
-          />
-        </div>
-        <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-white border-b-2 border-gray-300">
-              <tr className="text-gray-600">
-                <th className="py-2 px-2 w-8"></th>
-                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('symbol')}>SYMBOL {tickerSortIcon('symbol')}</th>
-                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('name')}>EXCHANGE / INFO {tickerSortIcon('name')}</th>
-                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('industry')}>INDUSTRY {tickerSortIcon('industry')}</th>
-                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('price')}>PRICE {tickerSortIcon('price')}</th>
-                <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('change')}>CHANGE {tickerSortIcon('change')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickers.length > 0 ? filteredTickers.map((t, idx) => (
-                <tr key={idx} className="border-b hover:bg-gray-50 cursor-pointer transition" onClick={() => navigate(`/analysis/${t.symbol}`)}>
-                  <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                    <button type="button" onClick={() => toggleWatchlist(t.symbol, t.name, 'stock')} className="text-base leading-none transition">
-                      <span className={isWatched(t.symbol) ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}>★</span>
-                    </button>
-                  </td>
-                  <td className="py-3 px-2 font-bold text-blue-600">{t.symbol}</td>
-                  <td className="py-3 px-2 text-gray-700">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-semibold text-gray-500 uppercase">{t.market || 'Unknown'}</span>
-                      <span>{t.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-2 text-gray-700 text-sm">{t.industry || 'Unknown'}</td>
-                  <td className="py-3 px-2 font-semibold text-right">{t.price}</td>
-                  <td className={`py-3 px-2 font-semibold text-right ${t.change?.includes('+') ? 'text-green-600' : t.change?.includes('-') ? 'text-red-600' : 'text-gray-400'}`}>{t.change}</td>
-                </tr>
-              )) : (
-                <tr><td colSpan={6} className="py-4 text-center text-gray-500">No tickers match your filter.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-gray-500 mt-2">Showing {filteredTickers.length} of {tickers.length} stocks</p>
-      </div>
+      {renderBoard()}
 
       {tradeModal.open && (
         <TradeModal

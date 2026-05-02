@@ -829,6 +829,13 @@ async def holdings(current_user: dict = Depends(get_current_user)):
     ]}
 
 
+@app.get("/api/trades/history/{symbol}")
+async def symbol_history(symbol: str, current_user: dict = Depends(get_current_user)):
+    trades = await get_trades(app.state.db_pool, current_user["id"])
+    filtered = [t for t in trades if t["symbol"].upper() == symbol.upper()]
+    return {"trades": filtered}
+
+
 @app.get("/api/trades/pending")
 async def list_pending(current_user: dict = Depends(get_current_user)):
     orders = await get_user_pending_orders(current_user["id"])

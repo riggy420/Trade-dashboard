@@ -173,3 +173,8 @@ export const updateTrade = async (tradeId: number, data: Record<string, unknown>
 export const deleteTrade = async (tradeId: number) => {
   await api.delete(`/trades/${tradeId}`);
 };
+
+export const fetchSymbolHistory = async (symbol: string) => {
+  const response = await api.get(`/trades/history/${encodeURIComponent(symbol)}`);
+  return response.data;
+};
