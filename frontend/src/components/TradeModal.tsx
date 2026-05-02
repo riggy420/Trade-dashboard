@@ -60,9 +60,14 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
     setSubmitting(true);
     setError('');
     try {
-      await submitTrade(ticker, companyName, side, tradeType, marketPrice, volumeNum, limitPriceNum);
-      onSuccess();
-      onClose();
+      const result = await submitTrade(ticker, companyName, side, tradeType, marketPrice, volumeNum, limitPriceNum);
+      if (result.status === 'pending') {
+        onSuccess();  // triggers parent toast
+        onClose();
+      } else {
+        onSuccess();
+        onClose();
+      }
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Trade failed. Please try again.');
       setStep(1);

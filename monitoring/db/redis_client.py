@@ -77,3 +77,54 @@ async def get_all_meta() -> list[dict]:
         return []
     vals = await r.mget(keys)
     return [json.loads(v) for v in vals if v]
+
+
+# ---------------------------------------------------------------------------
+# Pending limit order helpers
+# ---------------------------------------------------------------------------
+
+async def save_pending_order(order_id: str, order: dict) -> None:
+    r = await get_redis()
+    if r is None:
+        return
+    await r.set(f"pending:order:{order_id}", json.dumps(order, default=str))
+    await r.sadd("pending:index", order_id)
+
+
+async def get_pending_order(order_id: str) -> dict | None:
+    r = await get_redis()
+    if r is None:
+        return None
+    raw = await r.get(f"pending:order:{order_id}")
+    return json.loads(raw) if raw else None
+
+
+async def get_all_pending_orders() -> list[dict]:
+    r = await get_redis()
+    if r is None:
+        return []
+    ids = await r.smembers("pending:index")
+    if not ids:
+        return []
+    results = []
+    for oid in ids:
+        raw = await r.get(f"pending:order:{oid}")
+        if raw:
+            try:
+                results.append(json.loads(raw))
+            except json.JSONDecodeError:
+                pass
+    return results
+
+
+async def remove_pending_order(order_id: str) -> None:
+    r = await get_redis()
+    if r is None:
+        return
+    await r.delete(f"pending:order:{order_id}")
+    await r.srem("pending:index", order_id)
+
+
+async def get_user_pending_orders(user_id: int) -> list[dict]:
+    all_orders = await get_all_pending_orders()
+    return [o for o in all_orders if o.get("user_id") == user_id]

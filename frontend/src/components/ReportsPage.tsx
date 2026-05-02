@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchTrades } from '../api/endpoints';
+import { fetchTrades, fetchPendingOrders, cancelPendingOrder } from '../api/endpoints';
 
 interface Trade {
   id: number;
@@ -19,14 +19,27 @@ const fmt = (n: number) =>
 
 export default function ReportsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadData = () => {
     fetchTrades()
       .then((data) => setTrades(data.trades || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+    fetchPendingOrders()
+      .then((data) => setPendingOrders(data.pending || []))
+      .catch(() => {});
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleCancel = async (orderId: string) => {
+    try {
+      await cancelPendingOrder(orderId);
+      setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch {}
+  };
 
   const totalBuy = trades.filter((t) => t.side === 'BUY').reduce((s, t) => s + Number(t.total_value), 0);
   const totalSell = trades.filter((t) => t.side === 'SELL').reduce((s, t) => s + Number(t.total_value), 0);
@@ -52,6 +65,56 @@ export default function ReportsPage() {
           <p className="text-2xl font-bold text-red-600 mt-1">{fmt(totalSell)}</p>
         </div>
       </div>
+
+      {pendingOrders.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded overflow-hidden shadow-sm">
+          <div className="px-4 py-2 bg-amber-100 border-b border-amber-200 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-700">Pending Limit Orders</span>
+            <span className="text-xs text-amber-500">{pendingOrders.length} queued</span>
+          </div>
+          <div className="p-0">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50 border-b border-amber-100">
+                <tr>
+                  <th className="text-left px-4 py-2 font-semibold text-amber-700">Created</th>
+                  <th className="text-left px-4 py-2 font-semibold text-amber-700">Symbol</th>
+                  <th className="text-left px-4 py-2 font-semibold text-amber-700">Side</th>
+                  <th className="text-right px-4 py-2 font-semibold text-amber-700">Limit Price</th>
+                  <th className="text-right px-4 py-2 font-semibold text-amber-700">Volume</th>
+                  <th className="text-center px-4 py-2 font-semibold text-amber-700">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingOrders.map((o) => (
+                  <tr key={o.id} className="border-b border-amber-100">
+                    <td className="px-4 py-2 text-gray-500 text-xs">
+                      {new Date(o.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 font-bold text-blue-600">{o.symbol}</td>
+                    <td className="px-4 py-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${o.side === 'BUY' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {o.side}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right font-semibold">
+                      {fmt(Number(o.limit_price))}
+                    </td>
+                    <td className="px-4 py-2 text-right text-gray-700">{o.volume}</td>
+                    <td className="px-4 py-2 text-center">
+                      <button
+                        onClick={() => handleCancel(o.id)}
+                        className="text-xs text-red-600 hover:text-red-800 underline"
+                      >
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-gray-400 italic">Loading trade history...</p>

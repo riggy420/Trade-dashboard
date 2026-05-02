@@ -155,3 +155,12 @@ export const fetchHoldings = async () => {
   const response = await api.get(`/trades/holdings`);
   return response.data;
 };
+
+export const fetchPendingOrders = async () => {
+  const response = await api.get(`/trades/pending`);
+  return response.data;
+};
+
+export const cancelPendingOrder = async (orderId: string) => {
+  await api.delete(`/trades/pending/${encodeURIComponent(orderId)}`);
+};

@@ -11,7 +11,11 @@ from db.database import (
     get_watchlist, add_to_watchlist, remove_from_watchlist,
     create_trade, get_trades, get_net_position, get_holdings,
 )
-from db.redis_client import get_meta, get_all_meta
+from db.redis_client import (
+    get_meta, get_all_meta,
+    save_pending_order, get_user_pending_orders, remove_pending_order,
+    get_all_pending_orders,
+)
 from auth import (
     verify_password, create_access_token, create_refresh_token,
     decode_token, get_current_user,
@@ -21,6 +25,7 @@ from auth import (
 import json
 import os
 import asyncio
+import uuid
 from datetime import datetime, timedelta
 
 app = FastAPI(title="Taiwan Stock Monitor API", description="Backend for fetching and serving stock data")
@@ -114,15 +119,17 @@ async def startup_tasks():
     app.state.db_pool = await create_db_pool()
     app.state.intraday_refresh_lock = asyncio.Lock()
     app.state.hourly_intraday_refresh_task = asyncio.create_task(_hourly_intraday_refresh_loop())
+    app.state.pending_order_checker_task = asyncio.create_task(_pending_order_checker())
 
 
 @app.on_event("shutdown")
 async def shutdown_tasks():
-    task = getattr(app.state, "hourly_intraday_refresh_task", None)
-    if task is not None:
-        task.cancel()
-        with suppress(asyncio.CancelledError):
-            await task
+    for task_name in ("hourly_intraday_refresh_task", "pending_order_checker_task"):
+        task = getattr(app.state, task_name, None)
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
     pool = getattr(app.state, "db_pool", None)
     if pool is not None:
         await pool.close()
@@ -747,32 +754,53 @@ async def submit_trade(body: TradeRequest, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=400, detail="volume must be positive")
 
     order_type = body.type.upper()
+    user_id = current_user["id"]
 
-    # Limit order validation: price must have reached the limit
     if order_type == "LIMIT":
         if body.limit_price is None:
             raise HTTPException(status_code=400, detail="limit_price is required for LIMIT orders")
-        if body.side.upper() == "BUY" and body.price > body.limit_price:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Limit not reached: current price NT${body.price:.2f} is above your limit of NT${body.limit_price:.2f}"
-            )
-        if body.side.upper() == "SELL" and body.price < body.limit_price:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Limit not reached: current price NT${body.price:.2f} is below your limit of NT${body.limit_price:.2f}"
-            )
+
+        # Check if limit is met
+        buy_met = body.side.upper() == "BUY" and body.price <= body.limit_price
+        sell_met = body.side.upper() == "SELL" and body.price >= body.limit_price
+
+        if not (buy_met or sell_met):
+            # Queue as pending limit order
+            if body.side.upper() == "SELL":
+                net = await get_net_position(app.state.db_pool, user_id, body.symbol)
+                if net < body.volume:
+                    raise HTTPException(status_code=400, detail=f"Insufficient holdings: you hold {net} shares")
+
+            order_id = str(uuid.uuid4())
+            await save_pending_order(order_id, {
+                "id": order_id,
+                "user_id": user_id,
+                "symbol": body.symbol,
+                "name": body.name,
+                "side": body.side.upper(),
+                "type": order_type,
+                "price": body.price,
+                "volume": body.volume,
+                "limit_price": body.limit_price,
+                "created_at": datetime.now().isoformat(),
+            })
+            return {
+                "status": "pending",
+                "id": order_id,
+                "message": f"Order queued. Will execute when price reaches NT${body.limit_price:.2f}",
+            }
+
         execution_price = body.limit_price
     else:
         execution_price = body.price
 
     if body.side.upper() == "SELL":
-        net = await get_net_position(app.state.db_pool, current_user["id"], body.symbol)
+        net = await get_net_position(app.state.db_pool, user_id, body.symbol)
         if net < body.volume:
             raise HTTPException(status_code=400, detail=f"Insufficient holdings: you hold {net} shares")
 
     trade = await create_trade(
-        app.state.db_pool, current_user["id"],
+        app.state.db_pool, user_id,
         body.symbol, body.name, body.side, order_type, execution_price, body.volume,
         body.limit_price,
     )
@@ -798,6 +826,56 @@ async def holdings(current_user: dict = Depends(get_current_user)):
         {**h, "avg_buy_price": float(h["avg_buy_price"]) if h["avg_buy_price"] is not None else None}
         for h in items
     ]}
+
+
+@app.get("/api/trades/pending")
+async def list_pending(current_user: dict = Depends(get_current_user)):
+    orders = await get_user_pending_orders(current_user["id"])
+    return {"pending": orders}
+
+
+@app.delete("/api/trades/pending/{order_id}", status_code=204)
+async def cancel_pending(order_id: str, current_user: dict = Depends(get_current_user)):
+    order = await get_user_pending_orders(current_user["id"])
+    match = next((o for o in order if o["id"] == order_id), None)
+    if match is None:
+        raise HTTPException(status_code=404, detail="Pending order not found")
+    await remove_pending_order(order_id)
+    return None
+
+
+async def _pending_order_checker():
+    """Background loop: check pending limit orders every 30s and execute when limit is met."""
+    await asyncio.sleep(10)  # wait for initial Redis connection
+    while True:
+        await asyncio.sleep(30)
+        try:
+            orders = await get_all_pending_orders()
+            for order in orders:
+                meta = await get_meta(order["symbol"])
+                if meta is None:
+                    continue
+                current = meta["lastPrice"]
+                side = order["side"]
+                limit = order["limit_price"]
+                if (side == "BUY" and current <= limit) or (side == "SELL" and current >= limit):
+                    # Check sell holdings
+                    if side == "SELL":
+                        net = await get_net_position(app.state.db_pool, order["user_id"], order["symbol"])
+                        if net < order["volume"]:
+                            continue  # skip, holdings changed
+                    try:
+                        await create_trade(
+                            app.state.db_pool, order["user_id"],
+                            order["symbol"], order["name"], side, "LIMIT", limit,
+                            order["volume"], limit,
+                        )
+                        await remove_pending_order(order["id"])
+                        print(f"Pending LIMIT {side} for {order['symbol']} at NT${limit:.2f} executed.")
+                    except Exception as e:
+                        print(f"Failed to execute pending order {order['id']}: {e}")
+        except Exception as e:
+            print(f"Pending order checker error: {e}")
 
 
 @app.get("/api/data/index-history/{index_name}")
