@@ -1,3 +1,4 @@
+import json
 import yfinance as yf
 import pandas as pd
 import os
@@ -23,6 +24,42 @@ def _read_lines(filepath: str) -> list[str]:
         except OSError:
             pass
         return []
+
+
+def _sync_intraday_to_redis(symbol: str, df: pd.DataFrame) -> None:
+    """Store OHLCV records + price meta in Redis. Silently skips if unavailable."""
+    try:
+        from redis import Redis as SyncRedis
+        r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True, socket_connect_timeout=2)
+        r.ping()
+    except Exception:
+        return
+    try:
+        closes = df["Close"].dropna()
+        if closes.empty:
+            return
+        records = []
+        for idx, row in df.iterrows():
+            records.append({
+                "date": str(idx),
+                "open": float(row.get("Open", 0) or 0),
+                "high": float(row.get("High", 0) or 0),
+                "low": float(row.get("Low", 0) or 0),
+                "close": float(row.get("Close", 0) or 0),
+                "volume": float(row.get("Volume", 0) or 0),
+            })
+        last_price = float(closes.iloc[-1])
+        prev_price = float(closes.iloc[-2]) if len(closes) >= 2 else last_price
+        change = last_price - prev_price
+        change_pct = round((change / prev_price) * 100, 2) if prev_price != 0 else 0
+        r.set(f"intraday:{symbol}", json.dumps(records, default=str))
+        r.set(f"intraday:meta:{symbol}", json.dumps({
+            "symbol": symbol, "lastPrice": last_price,
+            "change": round(change, 2), "changePct": change_pct,
+            "lastUpdated": str(datetime.now()),
+        }, default=str))
+    except Exception:
+        pass
 
 
 MARKET_SUFFIXES = {
@@ -372,9 +409,11 @@ def fetch_intraday(ticker: str, market: str | None = None) -> str:
                     combined = pd.concat([existing_frame, append_frame])
                     combined = combined[~combined.index.duplicated(keep="last")]
                     _rewrite_intraday_file(filepath, combined)
+                    _sync_intraday_to_redis(base_ticker, combined)
                     print(f"Appended {len(append_frame)} new hourly rows to {filepath}")
                     return filepath
-                
+
+                _sync_intraday_to_redis(base_ticker, existing_frame)
                 print(f"Intraday data already up to date for {used_ticker}")
                 return filepath
         except Exception as e:
@@ -385,6 +424,7 @@ def fetch_intraday(ticker: str, market: str | None = None) -> str:
         raise ValueError(f"No intraday data found for {base_ticker} on market {suffix}")
 
     _rewrite_intraday_file(filepath, df)
+    _sync_intraday_to_redis(base_ticker, df)
     print(f"Saved intraday data to {filepath}")
     return filepath
 

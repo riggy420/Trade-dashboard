@@ -11,12 +11,14 @@ from db.database import (
     get_watchlist, add_to_watchlist, remove_from_watchlist,
     create_trade, get_trades, get_net_position, get_holdings,
 )
+from db.redis_client import get_meta, get_all_meta
 from auth import (
     verify_password, create_access_token, create_refresh_token,
     decode_token, get_current_user,
     RegisterRequest, LoginRequest, RefreshRequest, TokenResponse, UserOut,
     WatchlistAddRequest, TradeRequest,
 )
+import json
 import os
 import asyncio
 from datetime import datetime, timedelta
@@ -228,6 +230,24 @@ def get_tickers(_user: dict = Depends(get_current_user)):
         except Exception as e:
             raise HTTPException(status_code=404, detail="Tickers not found and auto-refresh failed.")
     
+    # Load Redis meta cache (sync client, gracefully skips)
+    redis_meta: dict[str, dict] = {}
+    try:
+        from redis import Redis as SyncRedis
+        r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True, socket_connect_timeout=2)
+        r.ping()
+        meta_keys = list(r.scan_iter("intraday:meta:*"))
+        if meta_keys:
+            for v in r.mget(meta_keys):
+                if v:
+                    try:
+                        m = json.loads(v)
+                        redis_meta[m["symbol"]] = m
+                    except (json.JSONDecodeError, KeyError):
+                        pass
+    except Exception:
+        pass
+
     # Load sector/industry data
     industry_map = {}
     sectors_file = os.path.join(DATA_DIR, "twse_sectors.txt")
@@ -266,33 +286,37 @@ def get_tickers(_user: dict = Depends(get_current_user)):
         else:
             symbol, name, market = line, "Unknown", "Unknown"
             
-        # Try to find intraday data to get current price and change
+        # Prefer Redis meta, fall back to .txt intraday files
         price = "-"
         change = "-"
-        
-        suffix = ".TW" if market == "TWSE" else ".TWO" if market == "TPEx" else None
-        suffixes = [suffix] if suffix else [".TW", ".TWO"]
-
-        for candidate_suffix in suffixes:
-            intra_file = os.path.join(DATA_DIR, f"{symbol}{candidate_suffix}_intraday.txt")
-            if os.path.exists(intra_file):
-                try:
-                    with open(intra_file, "r") as inf:
-                        lines = inf.read().splitlines()
-                        if len(lines) >= 2:
-                            last_row = lines[-1].split('\t')
-                            prev_row = lines[-2].split('\t') if len(lines) >= 3 else last_row
-                            current_close = float(last_row[4])
-                            prev_close = float(prev_row[4])
-                            price = f"{current_close:.2f}"
-                            if current_close != prev_close:
-                                pct_change = ((current_close - prev_close) / prev_close) * 100
-                                change = f"{'+' if pct_change > 0 else ''}{pct_change:.2f}%"
-                            else:
-                                change = "0.00%"
-                except:
-                    pass
-                break
+        meta = redis_meta.get(symbol)
+        if meta:
+            price = f"{meta['lastPrice']:.2f}"
+            pct = meta.get("changePct", 0)
+            change = f"{'+' if pct > 0 else ''}{pct:.2f}%"
+        else:
+            suffix = ".TW" if market == "TWSE" else ".TWO" if market == "TPEx" else None
+            suffixes = [suffix] if suffix else [".TW", ".TWO"]
+            for candidate_suffix in suffixes:
+                intra_file = os.path.join(DATA_DIR, f"{symbol}{candidate_suffix}_intraday.txt")
+                if os.path.exists(intra_file):
+                    try:
+                        with open(intra_file, "r") as inf:
+                            lines = inf.read().splitlines()
+                            if len(lines) >= 2:
+                                last_row = lines[-1].split('\t')
+                                prev_row = lines[-2].split('\t') if len(lines) >= 3 else last_row
+                                current_close = float(last_row[4])
+                                prev_close = float(prev_row[4])
+                                price = f"{current_close:.2f}"
+                                if current_close != prev_close:
+                                    pct_change = ((current_close - prev_close) / prev_close) * 100
+                                    change = f"{'+' if pct_change > 0 else ''}{pct_change:.2f}%"
+                                else:
+                                    change = "0.00%"
+                    except Exception:
+                        pass
+                    break
                 
         results.append({
             "symbol": symbol,
