@@ -1,11 +1,12 @@
 """
-JWT authentication module for EquitiTrack.
-Handles user management, password hashing, token creation/validation,
+JWT authentication for EquitiTrack.
+Handles password helpers, token creation/validation, Pydantic models,
 and the FastAPI dependency used to protect routes.
+
+Database helpers live in db/database.py.
 """
 
 import os
-import urllib.parse
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
@@ -14,11 +15,12 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
 
+from db.database import get_user_by_id
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
-DB_URL = os.getenv("DATABASE_URL", "postgres://postgres:admin@localhost:5432/equititrack")
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-me-in-production-use-a-random-32-byte-hex-string")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
@@ -99,10 +101,11 @@ class WatchlistAddRequest(BaseModel):
 class TradeRequest(BaseModel):
     symbol: str
     name: str = ""
-    side: str        # "BUY" or "SELL"
-    type: str = "STOCK"
-    price: float
+    side: str           # "BUY" or "SELL"
+    type: str = "MARKET"  # "MARKET" or "LIMIT"
+    price: float        # current market price (always sent)
     volume: int
+    limit_price: float | None = None  # required when type == "LIMIT"
 
 
 class TokenResponse(BaseModel):
@@ -119,193 +122,10 @@ class UserOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Database helpers
-# ---------------------------------------------------------------------------
-
-CREATE_USERS_TABLE = """
-CREATE TABLE IF NOT EXISTS users (
-    id          SERIAL PRIMARY KEY,
-    username    VARCHAR(50)  UNIQUE NOT NULL,
-    email       VARCHAR(255) UNIQUE NOT NULL,
-    hashed_password TEXT     NOT NULL,
-    created_at  TIMESTAMPTZ  DEFAULT NOW()
-);
-"""
-
-CREATE_WATCHLIST_TABLE = """
-CREATE TABLE IF NOT EXISTS watchlist (
-    id          SERIAL PRIMARY KEY,
-    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    symbol      VARCHAR(20) NOT NULL,
-    name        TEXT NOT NULL DEFAULT '',
-    item_type   VARCHAR(10) NOT NULL DEFAULT 'stock',
-    added_at    TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (user_id, symbol)
-);
-"""
-
-CREATE_TRADES_TABLE = """
-CREATE TABLE IF NOT EXISTS trades (
-    id          SERIAL PRIMARY KEY,
-    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    symbol      VARCHAR(20) NOT NULL,
-    name        TEXT NOT NULL DEFAULT '',
-    side        VARCHAR(4) NOT NULL,
-    type        VARCHAR(10) NOT NULL DEFAULT 'STOCK',
-    price       NUMERIC(12,2) NOT NULL,
-    volume      INTEGER NOT NULL,
-    total_value NUMERIC(14,2) NOT NULL,
-    traded_at   TIMESTAMPTZ DEFAULT NOW()
-);
-"""
-
-
-async def _ensure_database_exists():
-    """Connect to the default postgres DB and create equititrack if it doesn't exist."""
-    parsed = urllib.parse.urlparse(DB_URL)
-    db_name = parsed.path.lstrip('/')
-    bootstrap_url = parsed._replace(path='/postgres').geturl()
-
-    conn = await asyncpg.connect(bootstrap_url)
-    try:
-        exists = await conn.fetchval(
-            "SELECT 1 FROM pg_database WHERE datname = $1", db_name
-        )
-        if not exists:
-            # CREATE DATABASE cannot run inside a transaction block
-            await conn.execute(f'CREATE DATABASE "{db_name}"')
-            print(f"Database '{db_name}' created.")
-        else:
-            print(f"Database '{db_name}' already exists.")
-    finally:
-        await conn.close()
-
-
-async def create_db_pool() -> asyncpg.Pool:
-    await _ensure_database_exists()
-    pool = await asyncpg.create_pool(DB_URL, min_size=2, max_size=10)
-    async with pool.acquire() as conn:
-        await conn.execute(CREATE_USERS_TABLE)
-        await conn.execute(CREATE_WATCHLIST_TABLE)
-        await conn.execute(CREATE_TRADES_TABLE)
-    print("DB pool created and schema ensured.")
-    return pool
-
-
-async def get_user_by_username(pool: asyncpg.Pool, username: str) -> dict | None:
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, username, email, hashed_password, created_at FROM users WHERE username = $1",
-            username,
-        )
-    return dict(row) if row else None
-
-
-async def get_user_by_id(pool: asyncpg.Pool, user_id: int) -> dict | None:
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, username, email, created_at FROM users WHERE id = $1",
-            user_id,
-        )
-    return dict(row) if row else None
-
-
-async def create_user(pool: asyncpg.Pool, username: str, email: str, password: str) -> dict:
-    hashed = hash_password(password)
-    async with pool.acquire() as conn:
-        try:
-            row = await conn.fetchrow(
-                """
-                INSERT INTO users (username, email, hashed_password)
-                VALUES ($1, $2, $3)
-                RETURNING id, username, email, created_at
-                """,
-                username, email, hashed,
-            )
-        except asyncpg.UniqueViolationError as exc:
-            detail = "Username already taken" if "username" in str(exc) else "Email already registered"
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
-    return dict(row)
-
-
-async def get_watchlist(pool: asyncpg.Pool, user_id: int) -> list[dict]:
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT id, symbol, name, item_type, added_at FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC",
-            user_id,
-        )
-    return [dict(r) for r in rows]
-
-
-async def add_to_watchlist(pool: asyncpg.Pool, user_id: int, symbol: str, name: str, item_type: str) -> dict:
-    async with pool.acquire() as conn:
-        try:
-            row = await conn.fetchrow(
-                """
-                INSERT INTO watchlist (user_id, symbol, name, item_type)
-                VALUES ($1, $2, $3, $4)
-                RETURNING id, symbol, name, item_type, added_at
-                """,
-                user_id, symbol, name, item_type,
-            )
-        except asyncpg.UniqueViolationError:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already in watchlist")
-    return dict(row)
-
-
-async def remove_from_watchlist(pool: asyncpg.Pool, user_id: int, symbol: str) -> None:
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM watchlist WHERE user_id = $1 AND symbol = $2",
-            user_id, symbol,
-        )
-
-
-async def create_trade(pool: asyncpg.Pool, user_id: int, symbol: str, name: str,
-                       side: str, trade_type: str, price: float, volume: int) -> dict:
-    total_value = round(price * volume, 2)
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """
-            INSERT INTO trades (user_id, symbol, name, side, type, price, volume, total_value)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id, symbol, name, side, type, price, volume, total_value, traded_at
-            """,
-            user_id, symbol, name, side.upper(), trade_type.upper(),
-            price, volume, total_value,
-        )
-    return dict(row)
-
-
-async def get_trades(pool: asyncpg.Pool, user_id: int) -> list[dict]:
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT id, symbol, name, side, type, price, volume, total_value, traded_at "
-            "FROM trades WHERE user_id = $1 ORDER BY traded_at DESC",
-            user_id,
-        )
-    return [dict(r) for r in rows]
-
-
-async def get_net_position(pool: asyncpg.Pool, user_id: int, symbol: str) -> int:
-    async with pool.acquire() as conn:
-        buy_vol = await conn.fetchval(
-            "SELECT COALESCE(SUM(volume), 0) FROM trades WHERE user_id=$1 AND symbol=$2 AND side='BUY'",
-            user_id, symbol,
-        )
-        sell_vol = await conn.fetchval(
-            "SELECT COALESCE(SUM(volume), 0) FROM trades WHERE user_id=$1 AND symbol=$2 AND side='SELL'",
-            user_id, symbol,
-        )
-    return int(buy_vol) - int(sell_vol)
-
-
-# ---------------------------------------------------------------------------
 # FastAPI dependency
 # ---------------------------------------------------------------------------
 
 def get_db_pool_dep(pool_attr: str = "db_pool"):
-    """Returns a dependency that pulls the pool from app.state."""
     from fastapi import Request
 
     def _dep(request: Request) -> asyncpg.Pool:

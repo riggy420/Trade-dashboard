@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchAnalysisData, getTickers } from '../api/endpoints';
+import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers } from '../api/endpoints';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import TradeModal from './TradeModal';
 import { useWatchlist } from '../context/WatchlistContext';
@@ -70,6 +70,9 @@ export default function MarketAnalysis() {
   const [tickerSearch, setTickerSearch] = useState('');
   const [tickerSortField, setTickerSortField] = useState<'symbol' | 'name' | 'price' | 'change' | 'industry' | null>('symbol');
   const [tickerSortOrder, setTickerSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [nextRefresh, setNextRefresh] = useState<number | null>(null);
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { isWatched, toggleWatchlist } = useWatchlist();
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawingStrokes, setDrawingStrokes] = useState<Array<Array<{ x: number; y: number }>>>([]);
@@ -229,11 +232,49 @@ export default function MarketAnalysis() {
     loadData();
   }, [activeTicker]);
 
-  useEffect(() => {
+  const fetchTickersData = () => {
     getTickers()
       .then((data) => setTickers(data.tickers || []))
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchTickersData();
   }, []);
+
+  // Auto-refresh: fetch intraday + refresh ticker list, then schedule next
+  const doRefresh = async () => {
+    try {
+      await refreshAllIntradayData();  // all stocks, no limit
+    } catch {}
+    try {
+      await refreshTickers();
+    } catch {}
+    fetchTickersData();
+  };
+
+  useEffect(() => {
+    if (autoRefresh) {
+      doRefresh();  // immediate first refresh when toggled on
+      setNextRefresh(Date.now() + 60 * 60 * 1000);
+      autoRefreshRef.current = setInterval(() => {
+        doRefresh();
+        setNextRefresh(Date.now() + 60 * 60 * 1000);
+      }, 60 * 60 * 1000);
+    } else {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+        autoRefreshRef.current = null;
+      }
+      setNextRefresh(null);
+    }
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+        autoRefreshRef.current = null;
+      }
+    };
+  }, [autoRefresh]);
 
   const chartData = useMemo(() => {
     return historicalData.map((row) => ({
@@ -483,6 +524,32 @@ export default function MarketAnalysis() {
       <div className="border border-gray-200 rounded shadow-sm bg-white p-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-bold text-lg">Taiwan Board</h2>
+          <div className="flex items-center gap-3">
+            {nextRefresh !== null && (
+              <span className="text-xs text-gray-400 tabular-nums">
+                Next refresh at {new Date(nextRefresh).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => { doRefresh(); }}
+              className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded transition"
+              title="Refresh now"
+            >
+              ↻ Refresh Now
+            </button>
+            <button
+              type="button"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`text-xs font-semibold px-3 py-1 rounded transition ${
+                autoRefresh
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+              }`}
+            >
+              {autoRefresh ? '⏱ Auto (1h) On' : '⏱ Auto (1h) Off'}
+            </button>
+          </div>
         </div>
         <div className="mb-4">
           <input

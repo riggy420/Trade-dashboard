@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers } from '../api/endpoints';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers, fetchHoldings } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 
@@ -14,15 +14,27 @@ export default function Dashboard() {
   const [indexHistoryLoading, setIndexHistoryLoading] = useState(false);
   const [supervisionAlerts, setSupervisionAlerts] = useState<any[]>([]);
   const [supervisionLoading, setSupervisionLoading] = useState(false);
+  const [holdings, setHoldings] = useState<any[]>([]);
   const navigate = useNavigate();
   const { isWatched, toggleWatchlist, watchlistItems } = useWatchlist();
   const [tickers, setTickers] = useState<any[]>([]);
 
-  useEffect(() => {
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const refreshLiveData = () => {
     fetchIndicesData();
-    fetchSectorsData();
     fetchSupervisionAlerts();
     getTickers().then((data) => setTickers(data.tickers || [])).catch(() => {});
+    fetchHoldings().then((data) => setHoldings(data.holdings || [])).catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshLiveData();
+    fetchSectorsData();
+    intervalRef.current = setInterval(refreshLiveData, 60_000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []);
 
   const fetchSupervisionAlerts = async () => {
@@ -120,6 +132,39 @@ export default function Dashboard() {
   const industryIndices = indices.filter((idx) => idx.group === 'industry');
   const conceptIndices = indices.filter((idx) => idx.group === 'concept');
 
+  // Portfolio totals computed client-side from holdings + live ticker prices
+  const holdingsWithPnl = useMemo(() => {
+    return holdings.map((h) => {
+      const ticker = tickers.find((t) => t.symbol === h.symbol);
+      const currentPrice = ticker ? parseFloat(ticker.price) || null : null;
+      const avgBuy = parseFloat(h.avg_buy_price) || 0;
+      const netPos = parseInt(h.net_position) || 0;
+      const marketValue = currentPrice !== null ? currentPrice * netPos : null;
+      const costBasis = avgBuy * netPos;
+      const pnl = marketValue !== null ? marketValue - costBasis : null;
+      const pnlPct = costBasis > 0 && pnl !== null ? (pnl / costBasis) * 100 : null;
+      return { ...h, currentPrice, avgBuy, netPosition: netPos, marketValue, costBasis, pnl, pnlPct };
+    });
+  }, [holdings, tickers]);
+
+  const portfolioSummary = useMemo(() => {
+    if (!holdingsWithPnl.length) {
+      return { totalValue: 0, totalCost: 0, totalPnl: 0, pnlPct: 0, count: 0 };
+    }
+    let totalValue = 0;
+    let totalCost = 0;
+    for (const h of holdingsWithPnl) {
+      if (h.marketValue !== null) totalValue += h.marketValue;
+      totalCost += h.costBasis;
+    }
+    const totalPnl = totalValue - totalCost;
+    const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+    return { totalValue, totalCost, totalPnl, pnlPct, count: holdingsWithPnl.length };
+  }, [holdingsWithPnl]);
+
+  const fmtNT = (n: number) =>
+    `NT$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
   const watchlistMovers = watchlistItems
     .filter((w) => w.item_type === 'stock')
     .map((w) => {
@@ -133,6 +178,72 @@ export default function Dashboard() {
 
   return (
     <div className="p-8 text-gray-800">
+      {/* Portfolio Summary — always visible */}
+      <div className="mb-6">
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <p className="text-xs uppercase text-gray-500 font-semibold tracking-wide">Portfolio Value</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{fmtNT(portfolioSummary.totalValue)}</p>
+          </div>
+          <div className={`rounded-lg p-5 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : portfolioSummary.totalPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <p className="text-xs uppercase font-semibold tracking-wide text-gray-600">Total P&amp;L</p>
+            <p className={`text-2xl font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.totalPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              {portfolioSummary.totalPnl >= 0 ? '+' : ''}{fmtNT(portfolioSummary.totalPnl)}
+            </p>
+            <p className={`text-sm font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ({portfolioSummary.pnlPct >= 0 ? '+' : ''}{portfolioSummary.pnlPct.toFixed(2)}%)
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <p className="text-xs uppercase text-gray-500 font-semibold tracking-wide">Holdings</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{portfolioSummary.count}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{portfolioSummary.count === 1 ? 'position' : 'positions'}</p>
+          </div>
+        </div>
+        {portfolioSummary.count === 0 && (
+          <p className="text-sm text-gray-400 italic mt-3 text-center">
+            No stocks currently held. Use the <span className="font-semibold text-gray-500">Buy</span> button on any analysis page to start building your portfolio.
+          </p>
+        )}
+      </div>
+
+      {/* Holdings Strip — same style as Watchlist Movers */}
+      {holdingsWithPnl.length > 0 && (
+        <div className="mb-6 bg-white border border-blue-100 rounded shadow-sm overflow-hidden">
+          <div className="px-4 py-2 border-b border-blue-50 flex items-center justify-between bg-blue-50">
+            <span className="text-xs font-bold uppercase tracking-widest text-blue-600">My Holdings</span>
+            <span className="text-xs text-blue-400">{holdingsWithPnl.length} stock{holdingsWithPnl.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex overflow-x-auto divide-x divide-gray-100">
+            {holdingsWithPnl.map((h: any) => (
+              <button
+                key={h.symbol}
+                type="button"
+                onClick={() => navigate(`/analysis/${h.symbol}`)}
+                className="flex-shrink-0 px-5 py-3 text-left hover:bg-blue-50 transition min-w-[160px]"
+              >
+                <div className="font-bold text-gray-900 text-sm">{h.symbol}</div>
+                <div className="text-xs text-gray-500 truncate max-w-[140px]">{h.name}</div>
+                <div className="mt-1 text-xs text-gray-500">
+                  <span className="font-semibold text-gray-700">{h.netPosition}</span> sh &middot; Avg <span className="font-semibold text-gray-700">{fmtNT(h.avgBuy)}</span>
+                </div>
+                {h.currentPrice !== null && (
+                  <div className="text-xs mt-0.5">
+                    Now <span className="font-semibold text-gray-700">{fmtNT(h.currentPrice)}</span>
+                    {h.pnlPct !== null && (
+                      <span className={`ml-1 font-bold ${h.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {h.pnlPct >= 0 ? '+' : ''}{h.pnlPct.toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Watchlist Movers */}
       {watchlistMovers.length > 0 && (
         <div className="mb-6 bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
           <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">

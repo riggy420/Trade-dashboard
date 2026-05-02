@@ -3,15 +3,17 @@ from contextlib import suppress
 from fastapi import FastAPI, HTTPException, Query, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from scrape import fetch_intraday, fetch_historical_5y, fetch_twse_tickers, fetch_all_intraday, fetch_all_sectors, fetch_all_indices, get_index_constituents, fetch_index_history
+from scrape.scrape import fetch_intraday, fetch_historical_5y, fetch_twse_tickers, fetch_all_intraday, fetch_all_sectors, fetch_all_indices, get_index_constituents, fetch_index_history
 from analysis_utils import build_analysis_payload
-from supervision_utils import score_stock, scan_all_stocks
-from auth import (
+from supervision.supervision_utils import score_stock, scan_all_stocks
+from db.database import (
     create_db_pool, create_user, get_user_by_username,
+    get_watchlist, add_to_watchlist, remove_from_watchlist,
+    create_trade, get_trades, get_net_position, get_holdings,
+)
+from auth import (
     verify_password, create_access_token, create_refresh_token,
     decode_token, get_current_user,
-    get_watchlist, add_to_watchlist, remove_from_watchlist,
-    create_trade, get_trades, get_net_position,
     RegisterRequest, LoginRequest, RefreshRequest, TokenResponse, UserOut,
     WatchlistAddRequest, TradeRequest,
 )
@@ -33,7 +35,7 @@ app.add_middleware(
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-INTRADAY_REFRESH_BATCH_SIZE = int(os.getenv("INTRADAY_REFRESH_BATCH_SIZE", "20"))
+INTRADAY_REFRESH_BATCH_SIZE = int(os.getenv("INTRADAY_REFRESH_BATCH_SIZE", "10"))
 INTRADAY_REFRESH_PAUSE_SECONDS = int(os.getenv("INTRADAY_REFRESH_PAUSE_SECONDS", "2"))
 HOURLY_REFRESH_INTERVAL_SECONDS = int(os.getenv("HOURLY_REFRESH_INTERVAL_SECONDS", "3600"))
 INTRADAY_STALE_THRESHOLD_SECONDS = int(os.getenv("INTRADAY_STALE_THRESHOLD_SECONDS", "3600"))
@@ -238,6 +240,13 @@ def get_tickers(_user: dict = Depends(get_current_user)):
                         ticker = parts[0]
                         industry = parts[2] if len(parts) > 2 else "Unknown"
                         industry_map[ticker] = industry
+        except (UnicodeDecodeError, UnicodeError):
+            # File may be corrupt or in a different encoding — reset it
+            print("Warning: industry data file corrupt, removing to force regeneration")
+            try:
+                os.remove(sectors_file)
+            except OSError:
+                pass
         except Exception as e:
             print(f"Warning: Failed to load industry data: {e}")
     
@@ -712,13 +721,36 @@ async def submit_trade(body: TradeRequest, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=400, detail="side must be BUY or SELL")
     if body.volume <= 0:
         raise HTTPException(status_code=400, detail="volume must be positive")
+
+    order_type = body.type.upper()
+
+    # Limit order validation: price must have reached the limit
+    if order_type == "LIMIT":
+        if body.limit_price is None:
+            raise HTTPException(status_code=400, detail="limit_price is required for LIMIT orders")
+        if body.side.upper() == "BUY" and body.price > body.limit_price:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Limit not reached: current price NT${body.price:.2f} is above your limit of NT${body.limit_price:.2f}"
+            )
+        if body.side.upper() == "SELL" and body.price < body.limit_price:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Limit not reached: current price NT${body.price:.2f} is below your limit of NT${body.limit_price:.2f}"
+            )
+        execution_price = body.limit_price
+    else:
+        execution_price = body.price
+
     if body.side.upper() == "SELL":
         net = await get_net_position(app.state.db_pool, current_user["id"], body.symbol)
         if net < body.volume:
             raise HTTPException(status_code=400, detail=f"Insufficient holdings: you hold {net} shares")
+
     trade = await create_trade(
         app.state.db_pool, current_user["id"],
-        body.symbol, body.name, body.side, body.type, body.price, body.volume,
+        body.symbol, body.name, body.side, order_type, execution_price, body.volume,
+        body.limit_price,
     )
     return trade
 
@@ -733,6 +765,15 @@ async def list_trades(current_user: dict = Depends(get_current_user)):
 async def position(symbol: str, current_user: dict = Depends(get_current_user)):
     net = await get_net_position(app.state.db_pool, current_user["id"], symbol)
     return {"symbol": symbol, "net_position": net}
+
+
+@app.get("/api/trades/holdings")
+async def holdings(current_user: dict = Depends(get_current_user)):
+    items = await get_holdings(app.state.db_pool, current_user["id"])
+    return {"holdings": [
+        {**h, "avg_buy_price": float(h["avg_buy_price"]) if h["avg_buy_price"] is not None else None}
+        for h in items
+    ]}
 
 
 @app.get("/api/data/index-history/{index_name}")

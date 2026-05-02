@@ -2,7 +2,7 @@ import math
 import os
 from datetime import datetime
 
-from scrape import fetch_historical_5y, fetch_twse_tickers
+from scrape.scrape import fetch_historical_5y, fetch_twse_tickers
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")

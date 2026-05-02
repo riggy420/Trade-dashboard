@@ -12,16 +12,29 @@ interface Props {
 
 export default function TradeModal({ ticker, companyName, currentPrice, side, onClose, onSuccess }: Props) {
   const [step, setStep] = useState<1 | 2>(1);
-  const [tradeType, setTradeType] = useState<'STOCK' | 'OPTIONS'>('STOCK');
+  const [tradeType, setTradeType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [volume, setVolume] = useState('');
+  const [limitPrice, setLimitPrice] = useState('');
   const [netPosition, setNetPosition] = useState<number | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const price = currentPrice ?? 0;
+  const marketPrice = currentPrice ?? 0;
   const volumeNum = parseInt(volume) || 0;
-  const total = price * volumeNum;
+  const limitPriceNum = parseFloat(limitPrice) || undefined;
+
+  // For market orders, execution price is current price.
+  // For limit orders, execution price is the limit price (validated server-side).
+  const executionPrice = tradeType === 'LIMIT' && limitPriceNum ? limitPriceNum : marketPrice;
+  const total = executionPrice * volumeNum;
+
+  // Reset limit price when switching order types
+  const handleTypeChange = (t: 'MARKET' | 'LIMIT') => {
+    setTradeType(t);
+    setLimitPrice('');
+    setError('');
+  };
 
   useEffect(() => {
     if (side === 'SELL') {
@@ -33,14 +46,21 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
     }
   }, [ticker, side]);
 
-  const canProceed = volumeNum > 0 && price > 0 &&
+  const limitReached = tradeType === 'LIMIT' && limitPriceNum
+    ? (side === 'BUY' ? marketPrice <= limitPriceNum : marketPrice >= limitPriceNum)
+    : true;
+
+  const canProceed =
+    volumeNum > 0 &&
+    marketPrice > 0 &&
+    (tradeType === 'MARKET' || (limitPriceNum !== undefined && limitPriceNum > 0)) &&
     (side === 'BUY' || (netPosition !== null && netPosition >= volumeNum));
 
   const handleConfirm = async () => {
     setSubmitting(true);
     setError('');
     try {
-      await submitTrade(ticker, companyName, side, tradeType, price, volumeNum);
+      await submitTrade(ticker, companyName, side, tradeType, marketPrice, volumeNum, limitPriceNum);
       onSuccess();
       onClose();
     } catch (e: any) {
@@ -56,6 +76,9 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
   const btnClass = isBuy
     ? 'bg-green-600 hover:bg-green-700 text-white'
     : 'bg-red-600 hover:bg-red-700 text-white';
+
+  const fmtNT = (n: number) =>
+    `NT$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -74,37 +97,64 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
             {side === 'SELL' && (
               <div className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded px-3 py-2">
                 {positionLoading ? 'Checking holdings...' :
-                  netPosition === 0 ? <span className="text-red-600 font-medium">You have no holdings in {ticker}</span> :
-                  <span>You hold <span className="font-bold">{netPosition}</span> shares</span>}
+                  netPosition === 0
+                    ? <span className="text-red-600 font-medium">You have no holdings in {ticker}</span>
+                    : <span>You hold <span className="font-bold">{netPosition}</span> shares</span>}
               </div>
             )}
 
+            {/* Order type selector */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Order Type</label>
               <div className="flex gap-3">
-                {(['STOCK', 'OPTIONS'] as const).map((t) => (
+                {(['MARKET', 'LIMIT'] as const).map((t) => (
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setTradeType(t)}
+                    onClick={() => handleTypeChange(t)}
                     className={`flex-1 py-2 rounded border text-sm font-medium transition ${tradeType === t ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                   >
-                    {t === 'STOCK' ? 'Stock' : 'Options'}
+                    {t === 'MARKET' ? 'Market' : 'Limit'}
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {tradeType === 'MARKET'
+                  ? 'Executes immediately at the current market price.'
+                  : isBuy
+                    ? 'Executes only when the market price drops to or below your limit.'
+                    : 'Executes only when the market price rises to or above your limit.'}
+              </p>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Price (NT$)</label>
-              <input
-                type="text"
-                readOnly
-                value={price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                className="w-full px-3 py-2 border border-gray-200 rounded bg-gray-50 text-sm text-gray-700"
-              />
-            </div>
+            {/* Limit price input — only for LIMIT orders */}
+            {tradeType === 'LIMIT' && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                  Limit Price (NT$)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={limitPrice}
+                  onChange={(e) => setLimitPrice(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                  placeholder={isBuy ? 'Max price you will pay' : 'Min price you will accept'}
+                />
+                {limitPriceNum !== undefined && limitPriceNum > 0 && (
+                  <p className={`text-xs mt-1 font-medium ${limitReached ? 'text-green-600' : 'text-amber-600'}`}>
+                    {limitReached
+                      ? `Limit met — current price ${fmtNT(marketPrice)} is within your limit.`
+                      : isBuy
+                        ? `Limit not yet met — current price ${fmtNT(marketPrice)} is above ${fmtNT(limitPriceNum)}.`
+                        : `Limit not yet met — current price ${fmtNT(marketPrice)} is below ${fmtNT(limitPriceNum)}.`}
+                  </p>
+                )}
+              </div>
+            )}
 
+            {/* Volume */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Volume (shares)</label>
               <input
@@ -121,11 +171,18 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
               )}
             </div>
 
-            <div className="bg-gray-50 rounded px-3 py-2 flex justify-between text-sm">
-              <span className="text-gray-500">Estimated Total</span>
-              <span className="font-bold text-gray-900">
-                NT${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
+            {/* Estimated total */}
+            <div className="bg-gray-50 rounded px-3 py-2 space-y-1 text-sm">
+              {tradeType === 'MARKET' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Market Price</span>
+                  <span className="font-semibold text-gray-700">{fmtNT(marketPrice)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-500">Estimated Total</span>
+                <span className="font-bold text-gray-900">{fmtNT(total)}</span>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-1">
@@ -144,14 +201,21 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
         ) : (
           <div className="px-6 py-5 space-y-3">
             <p className="text-sm text-gray-500 mb-4">Please confirm your order details below.</p>
+
+            {tradeType === 'LIMIT' && !limitReached && (
+              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                Limit not currently met. The order will be rejected unless the price reaches {fmtNT(limitPriceNum!)}.
+              </div>
+            )}
+
             {[
               ['Action', <span className={`font-bold ${accentClass}`}>{side}</span>],
               ['Symbol', ticker],
               ['Company', companyName],
-              ['Order Type', tradeType === 'STOCK' ? 'Stock' : 'Options'],
-              ['Price', `NT$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+              ['Order Type', tradeType === 'MARKET' ? 'Market' : 'Limit'],
+              ...(tradeType === 'LIMIT' ? [['Limit Price', fmtNT(limitPriceNum!)]] : [['Market Price', fmtNT(marketPrice)]]),
               ['Volume', `${volumeNum} shares`],
-              ['Total Value', `NT$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+              ['Total Value', fmtNT(total)],
             ].map(([label, value]) => (
               <div key={String(label)} className="flex justify-between text-sm border-b border-gray-50 pb-2">
                 <span className="text-gray-500">{label}</span>

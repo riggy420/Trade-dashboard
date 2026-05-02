@@ -10,6 +10,7 @@ interface Trade {
   price: number;
   volume: number;
   total_value: number;
+  limit_price: number | null;
   traded_at: string;
 }
 
@@ -70,6 +71,7 @@ export default function ReportsPage() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Side</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Type</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Price</th>
+                <th className="text-right px-4 py-3 font-semibold text-gray-700">Limit</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Volume</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Total Value</th>
               </tr>
@@ -88,11 +90,14 @@ export default function ReportsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${t.type === 'LIMIT' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
                       {t.type}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold">{fmt(Number(t.price))}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">
+                    {t.limit_price != null ? fmt(Number(t.limit_price)) : <span className="text-gray-300">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-right text-gray-700">{t.volume}</td>
                   <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(Number(t.total_value))}</td>
                 </tr>
