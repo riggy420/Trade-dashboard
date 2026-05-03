@@ -115,12 +115,24 @@ async def _hourly_intraday_refresh_loop():
             print(f"Hourly intraday refresh failed: {e}")
 
 
+async def _ensure_sectors_cache():
+    """Generate twse_sectors.txt if missing."""
+    sectors_file = os.path.join(DATA_DIR, "twse_sectors.txt")
+    if not os.path.exists(sectors_file):
+        print("twse_sectors.txt missing, regenerating industry data...")
+        try:
+            await fetch_all_sectors()
+        except Exception as e:
+            print(f"Failed to regenerate sectors: {e}")
+
+
 @app.on_event("startup")
 async def startup_tasks():
     app.state.db_pool = await create_db_pool()
     app.state.intraday_refresh_lock = asyncio.Lock()
     app.state.hourly_intraday_refresh_task = asyncio.create_task(_hourly_intraday_refresh_loop())
     app.state.pending_order_checker_task = asyncio.create_task(_pending_order_checker())
+    asyncio.create_task(_ensure_sectors_cache())
 
 
 @app.on_event("shutdown")

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers, refreshIntraday } from '../api/endpoints';
+import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers, refreshIntraday, fetchPosition } from '../api/endpoints';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import TradeModal from './TradeModal';
 import { useWatchlist } from '../context/WatchlistContext';
@@ -69,6 +69,8 @@ export default function MarketAnalysis() {
   // Trade modal
   const [tradeModal, setTradeModal] = useState<{ open: boolean; side: 'BUY' | 'SELL' }>({ open: false, side: 'BUY' });
   const [tradeSuccess, setTradeSuccess] = useState('');
+  // Current position for this ticker
+  const [currentPosition, setCurrentPosition] = useState<number | null>(null);
   // Taiwan Board table
   const [tickers, setTickers] = useState<any[]>([]);
   const [tickerSearch, setTickerSearch] = useState('');
@@ -237,6 +239,14 @@ export default function MarketAnalysis() {
     };
     loadData();
   }, [activeTicker, isAllStocks]);
+
+  // Fetch current position for this ticker
+  useEffect(() => {
+    if (isOverview) return;
+    fetchPosition(activeTicker)
+      .then((data) => setCurrentPosition(data.net_position ?? 0))
+      .catch(() => setCurrentPosition(0));
+  }, [activeTicker, isOverview]);
 
   const fetchTickersData = () => {
     getTickers()
@@ -473,6 +483,11 @@ export default function MarketAnalysis() {
              <div className="text-sm text-gray-500 mt-1">
                Open: {latestOpen !== null ? `NT$${latestOpen.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
              </div>
+             {currentPosition !== null && currentPosition > 0 && (
+               <div className="text-sm text-blue-600 font-medium mt-1">
+                 You hold <span className="font-bold">{currentPosition}</span> share{currentPosition !== 1 ? 's' : ''}
+               </div>
+             )}
              <div className="flex gap-2 mt-3">
                <button
                  type="button"

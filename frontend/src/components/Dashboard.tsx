@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers, fetchHoldings, fetchSymbolHistory } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,9 @@ export default function Dashboard() {
   const [positionHistoryLoading, setPositionHistoryLoading] = useState(false);
   const navigate = useNavigate();
   const { isWatched, toggleWatchlist, watchlistItems } = useWatchlist();
+  const { addNotification } = useNotifications();
   const [tickers, setTickers] = useState<any[]>([]);
+  const prevPricesRef = useRef<Map<string, number>>(new Map());
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -37,10 +40,36 @@ export default function Dashboard() {
     }
   };
 
+  const checkSwings = (newTickers: any[]) => {
+    const watched = new Set(watchlistItems.filter((w) => w.item_type === 'stock').map((w) => w.symbol));
+    const held = new Set(holdings.map((h) => h.symbol));
+    for (const t of newTickers) {
+      if (!watched.has(t.symbol) && !held.has(t.symbol)) continue;
+      const change = parseFloat(t.change) || 0;
+      if (Math.abs(change) >= 3) {
+        const prev = prevPricesRef.current.get(t.symbol);
+        if (prev !== undefined && Math.abs(change - prev) < 0.01) continue; // already notified
+        prevPricesRef.current.set(t.symbol, change);
+        const dir = change >= 0 ? 'up' : 'down';
+        const label = held.has(t.symbol) ? 'Position' : 'Watchlist';
+        addNotification({
+          type: 'swing',
+          title: `${t.symbol} ${dir} ${Math.abs(change).toFixed(2)}%`,
+          message: `${label}: ${t.name} is ${dir} by ${Math.abs(change).toFixed(2)}%`,
+          symbol: t.symbol,
+        });
+      }
+    }
+  };
+
   const refreshLiveData = () => {
     fetchIndicesData();
     fetchSupervisionAlerts();
-    getTickers().then((data) => setTickers(data.tickers || [])).catch(() => {});
+    getTickers().then((data) => {
+      const newTickers = data.tickers || [];
+      setTickers(newTickers);
+      checkSwings(newTickers);
+    }).catch(() => {});
     fetchHoldings().then((data) => setHoldings(data.holdings || [])).catch(() => {});
   };
 

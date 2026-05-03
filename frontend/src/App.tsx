@@ -9,6 +9,7 @@ import ReportsPage from './components/ReportsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
+import { NotificationProvider, useNotifications } from './context/NotificationContext';
 
 const indicatorKeywords = new Set(['close', 'sma', 'sma5', 'ema', 'ema5', 'rsi', 'rsi14', 'mfi', 'mfi14', 'volume', 'volatility']);
 
@@ -16,7 +17,9 @@ function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { notifications, unreadCount, markAllRead, clearAll } = useNotifications();
   const [searchValue, setSearchValue] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const activeTicker = useMemo(() => {
     const pathParts = location.pathname.split('/').filter(Boolean);
@@ -96,7 +99,56 @@ function AppShell() {
             />
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-gray-400 font-bold hover:text-gray-800 cursor-pointer">🔔</span>
+            <div className="relative">
+              <button onClick={() => setShowNotifications(!showNotifications)}
+                className="text-gray-400 font-bold hover:text-gray-800 cursor-pointer relative">
+                🔔
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 top-8 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-96 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <span className="text-xs font-bold text-gray-600">Notifications</span>
+                    <div className="flex gap-2">
+                      <button onClick={markAllRead} className="text-xs text-blue-500 hover:text-blue-700">Mark all read</button>
+                      <button onClick={clearAll} className="text-xs text-red-400 hover:text-red-600">Clear</button>
+                    </div>
+                  </div>
+                  <div className="overflow-y-auto max-h-72">
+                    {notifications.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic text-center py-8">No notifications</p>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => {
+                            if (n.symbol) navigate(`/analysis/${n.symbol}`);
+                            setShowNotifications(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition ${!n.read ? 'bg-blue-50/50' : ''}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="text-sm mt-0.5">
+                              {n.type === 'swing' ? '📊' : n.type === 'trade' ? '💼' : n.type === 'limit_executed' ? '✅' : 'ℹ️'}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-800 truncate">{n.title}</p>
+                              <p className="text-xs text-gray-500 truncate">{n.message}</p>
+                              <p className="text-[10px] text-gray-400 mt-0.5">{new Date(n.timestamp).toLocaleTimeString()}</p>
+                            </div>
+                            {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="text-right">
               <p className="text-xs font-bold text-gray-800">{user?.username ?? 'Institutional Terminal'}</p>
               <p className="text-[10px] text-gray-400 tracking-wider">{user?.email ?? ''}</p>
@@ -118,6 +170,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
+        <NotificationProvider>
         <WatchlistProvider>
           <Routes>
             {/* Public routes — no shell */}
@@ -138,6 +191,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </WatchlistProvider>
+        </NotificationProvider>
       </Router>
     </AuthProvider>
   );

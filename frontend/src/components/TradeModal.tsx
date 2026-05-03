@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { submitTrade, fetchPosition } from '../api/endpoints';
+import { useNotifications } from '../context/NotificationContext';
 
 interface Props {
   ticker: string;
@@ -12,6 +13,7 @@ interface Props {
 
 export default function TradeModal({ ticker, companyName, currentPrice, side, onClose, onSuccess }: Props) {
   const [step, setStep] = useState<1 | 2>(1);
+  const { addNotification } = useNotifications();
   const [tradeType, setTradeType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [volume, setVolume] = useState('');
   const [limitPrice, setLimitPrice] = useState('');
@@ -62,9 +64,21 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
     try {
       const result = await submitTrade(ticker, companyName, side, tradeType, marketPrice, volumeNum, limitPriceNum);
       if (result.status === 'pending') {
-        onSuccess();  // triggers parent toast
+        addNotification({
+          type: 'trade',
+          title: `Limit order placed: ${side} ${ticker}`,
+          message: `${volumeNum} shares at limit NT$${limitPriceNum?.toFixed(2)} — queued`,
+          symbol: ticker,
+        });
+        onSuccess();
         onClose();
       } else {
+        addNotification({
+          type: 'trade',
+          title: `Order executed: ${side} ${ticker}`,
+          message: `${volumeNum} shares at NT$${executionPrice.toFixed(2)}`,
+          symbol: ticker,
+        });
         onSuccess();
         onClose();
       }
