@@ -214,7 +214,7 @@ def fetch_twse_tickers() -> list:
     tickers = sorted([(symbol, meta[0], meta[1]) for symbol, meta in tickers.items()], key=lambda item: item[0])
 
     # Limit TW stocks for fast bootstrapping (env: TICKER_LIMIT=50 = 50 stocks)
-    ticker_limit = int(os.getenv("TICKER_LIMIT", "0"))
+    ticker_limit = int(os.getenv("TICKER_LIMIT", "50"))
     if ticker_limit > 0:
         tickers = tickers[:ticker_limit]
 
