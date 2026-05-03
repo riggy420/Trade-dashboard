@@ -363,47 +363,37 @@ export default function ReportsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Symbol</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Side</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Type</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-700">Price</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-700">Limit</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-700">Volume</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-700">Total Value</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-700">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold text-gray-700">Date</th>
+                <th className="text-left px-3 py-2 font-semibold text-gray-700">Symbol</th>
+                <th className="text-left px-3 py-2 font-semibold text-gray-700">Name</th>
+                <th className="text-center px-3 py-2 font-semibold text-gray-700">Side</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Price</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Vol</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Total</th>
+                <th className="text-center px-3 py-2 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredTrades.map((t) => (
                 <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                    {new Date(t.traded_at).toLocaleString()}
+                  <td className="px-3 py-2 text-gray-500 text-[11px] whitespace-nowrap">
+                    {new Date(t.traded_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 font-bold text-blue-600">{t.symbol}</td>
-                  <td className="px-4 py-3 text-gray-700 max-w-[160px] truncate">{t.name || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${t.side === 'BUY' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <td className="px-3 py-2 font-bold text-blue-600 text-xs">{t.symbol}</td>
+                  <td className="px-3 py-2 text-gray-700 text-xs max-w-[100px] truncate">{t.name || '—'}</td>
+                  <td className="px-3 py-2 text-center">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${t.side === 'BUY' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {t.side}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${t.type === 'LIMIT' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {t.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold">{fmt(Number(t.price))}</td>
-                  <td className="px-4 py-3 text-right text-gray-500">
-                    {t.limit_price != null ? fmt(Number(t.limit_price)) : <span className="text-gray-300">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-700">{t.volume}</td>
-                  <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(Number(t.total_value))}</td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-2 text-right text-xs font-semibold">{fmt(Number(t.price))}</td>
+                  <td className="px-3 py-2 text-right text-xs text-gray-700">{t.volume}</td>
+                  <td className="px-3 py-2 text-right text-xs font-bold text-gray-900">{fmt(Number(t.total_value))}</td>
+                  <td className="px-3 py-2 text-center whitespace-nowrap">
                     <button onClick={(e) => { e.stopPropagation(); setEditingTrade(t); }}
-                      className="text-xs text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+                      className="text-[11px] text-blue-600 hover:text-blue-800 mr-1">Edit</button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
-                      className="text-xs text-red-500 hover:text-red-700">Delete</button>
+                      className="text-[11px] text-red-500 hover:text-red-700">Del</button>
                   </td>
                 </tr>
               ))}
