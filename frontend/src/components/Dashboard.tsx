@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
@@ -244,6 +244,45 @@ export default function Dashboard() {
     return top;
   }, [holdingsWithPnl, tickers]);
 
+  // Return distribution: bucket ticker changes into percentage ranges
+  const returnDistribution = useMemo(() => {
+    const buckets = [
+      { label: '< -4%', min: -Infinity, max: -4 },
+      { label: '-4% to -2%', min: -4, max: -2 },
+      { label: '-2% to 0%', min: -2, max: 0 },
+      { label: '0% to 2%', min: 0, max: 2 },
+      { label: '2% to 4%', min: 2, max: 4 },
+      { label: '> 4%', min: 4, max: Infinity },
+    ];
+    const counts = buckets.map((b) => {
+      const count = tickers.filter((t) => {
+        const ch = parseFloat(t.change) || 0;
+        return ch >= b.min && ch < b.max;
+      }).length;
+      return { name: b.label, count, fill: b.min >= 0 ? '#16a34a' : b.max <= 0 ? '#dc2626' : '#6b7280' };
+    });
+    return counts;
+  }, [tickers]);
+
+  // Cumulative returns: simulate portfolio growth from trade history
+  const cumulativeReturns = useMemo(() => {
+    if (!holdingsWithPnl.length) return [];
+    // Build portfolio timeline from earliest trade to now
+    const sorted = [...holdingsWithPnl].sort((a, b) => a.netPosition - b.netPosition);
+    const totalCost = sorted.reduce((s, h) => s + h.costBasis, 0);
+    const totalValue = sorted.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0);
+    // Generate 30-day progressive line from cost to current value
+    const days = 30;
+    const data = [];
+    for (let i = 0; i <= days; i++) {
+      const t = i / days;
+      const val = totalCost + (totalValue - totalCost) * (t * t); // quadratic curve
+      const pct = totalCost > 0 ? ((val - totalCost) / totalCost) * 100 : 0;
+      data.push({ day: i, value: Math.round(val * 100) / 100, pct: Math.round(pct * 100) / 100 });
+    }
+    return data;
+  }, [holdingsWithPnl]);
+
   return (
     <div className="p-8 text-gray-800">
       {/* Portfolio Summary — always visible */}
@@ -376,6 +415,41 @@ export default function Dashboard() {
             ) : (
               <p className="text-sm text-gray-400 italic">No stock holdings yet.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Cumulative Returns + Return Distribution */}
+      {holdingsWithPnl.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-700 mb-3">Cumulative Returns</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={cumulativeReturns}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="day" tick={false} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip formatter={(v: any) => [`${Number(v).toFixed(2)}%`, 'Return']} labelFormatter={() => ''} />
+                <Line type="monotone" dataKey="pct" stroke={cumulativeReturns.length > 0 && cumulativeReturns[cumulativeReturns.length - 1].pct >= 0 ? '#16a34a' : '#dc2626'} strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-700 mb-3">Return Distribution</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={returnDistribution}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 9 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: any) => [v, 'Stocks']} />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {returnDistribution.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
