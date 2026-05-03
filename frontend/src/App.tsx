@@ -20,6 +20,15 @@ function AppShell() {
   const { notifications, unreadCount, markAllRead, clearAll } = useNotifications();
   const [searchValue, setSearchValue] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [market, setMarket] = useState<'TW' | 'US'>(
+    () => (localStorage.getItem('market') as 'TW' | 'US') || 'TW'
+  );
+
+  const toggleMarket = () => {
+    const next = market === 'TW' ? 'US' : 'TW';
+    setMarket(next);
+    localStorage.setItem('market', next);
+  };
 
   const activeTicker = useMemo(() => {
     const pathParts = location.pathname.split('/').filter(Boolean);
@@ -58,30 +67,42 @@ function AppShell() {
           <Link to="/" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-black font-semibold text-black transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">⊞</span> Dashboard</span>
           </Link>
-          <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📈</span> Market Analysis</span>
-          </Link>
-          <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📋</span> All Stocks</span>
-          </Link>
-          <Link to="/analysis/bonds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">💰</span> Bonds</span>
-          </Link>
-          <Link to="/analysis/funds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📊</span> Mutual Funds</span>
-          </Link>
-          <div className="py-1 px-6 mt-2">
-            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">US Markets</p>
-          </div>
-          <Link to="/analysis/us-stocks" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">🇺🇸</span> US Stocks</span>
-          </Link>
-          <Link to="/analysis/us-bonds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">💵</span> US Bonds</span>
-          </Link>
-          <Link to="/analysis/us-funds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">🏦</span> US ETFs & Funds</span>
-          </Link>
+
+          {/* Market toggle */}
+          <button onClick={toggleMarket}
+            className="w-full text-left py-2 px-6 hover:bg-gray-50 flex items-center justify-between">
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+              {market === 'TW' ? '🇹🇼 Taiwan Markets' : '🇺🇸 US Markets'}
+            </span>
+            <span className="text-xs text-gray-400">↔ Switch</span>
+          </button>
+
+          {market === 'TW' ? (
+            <>
+              <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition pl-8">
+                <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📋</span> All Stocks</span>
+              </Link>
+              <Link to="/analysis/bonds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition pl-8">
+                <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">💰</span> Bonds</span>
+              </Link>
+              <Link to="/analysis/funds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition pl-8">
+                <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📊</span> Mutual Funds</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/analysis/us-stocks" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition pl-8">
+                <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">🇺🇸</span> US Stocks</span>
+              </Link>
+              <Link to="/analysis/us-bonds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition pl-8">
+                <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">💵</span> US Bonds</span>
+              </Link>
+              <Link to="/analysis/us-funds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition pl-8">
+                <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">🏦</span> US ETFs & Funds</span>
+              </Link>
+            </>
+          )}
+
           <Link to="/watchlist" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">★</span> Watchlist</span>
           </Link>
