@@ -83,8 +83,17 @@ export default function ReportsPage() {
   };
 
   const totalBuy = trades.filter((t) => t.side === 'BUY').reduce((s, t) => s + Number(t.total_value), 0);
-  const totalSell = trades.filter((t) => t.side === 'SELL').reduce((s, t) => s + Number(t.total_value), 0);
-  const netInvested = totalBuy - totalSell;
+  const netInvested = totalBuy - trades.filter((t) => t.side === 'SELL').reduce((s, t) => s + Number(t.total_value), 0);
+
+  // Realized P&L from completed sells
+  let realizedPnl = 0;
+  const posMap: Record<string, { qty: number; cost: number }> = {};
+  for (const t of [...trades].sort((a, b) => new Date(a.traded_at).getTime() - new Date(b.traded_at).getTime())) {
+    if (!posMap[t.symbol]) posMap[t.symbol] = { qty: 0, cost: 0 };
+    const p = posMap[t.symbol];
+    if (t.side === 'BUY') { p.qty += t.volume; p.cost += Number(t.total_value); }
+    else { const avg = p.qty > 0 ? p.cost / p.qty : 0; realizedPnl += Number(t.total_value) - (avg * t.volume); p.qty -= t.volume; p.cost -= avg * t.volume; }
+  }
 
   // Use backend-computed holdings (avg buy price, net position) — same as Dashboard
   const holdingsWithPnl = holdings.map((h: any) => {
@@ -158,9 +167,9 @@ export default function ReportsPage() {
             <p className="text-xs uppercase text-green-600 font-semibold">Total Bought</p>
             <p className="text-xl font-bold text-green-700 mt-1">{fmt(totalBuy)}</p>
           </div>
-          <div className="bg-white border border-red-200 rounded p-3 shadow-sm">
-            <p className="text-xs uppercase text-red-500 font-semibold">Total Sold</p>
-            <p className="text-xl font-bold text-red-600 mt-1">{fmt(totalSell)}</p>
+          <div className={`rounded p-3 shadow-sm border ${realizedPnl >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
+            <p className="text-xs uppercase text-gray-600 font-semibold">Realized P&amp;L</p>
+            <p className={`text-xl font-bold mt-1 ${realizedPnl >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{realizedPnl >= 0 ? '+' : ''}{fmt(realizedPnl)}</p>
           </div>
           <div className={`rounded p-3 shadow-sm border ${netInvested >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
             <p className="text-xs uppercase text-gray-600 font-semibold">Net Invested</p>
