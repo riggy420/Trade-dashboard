@@ -67,6 +67,23 @@ MARKET_SUFFIXES = {
     "TPEx": ".TWO",
 }
 
+MUTUAL_FUND_ISINS = [
+    # Taiwan mutual funds available on Yahoo Finance (ISIN-based .TW tickers)
+    # Note: Only ~3% of Taiwan's 4,400+ domestic funds are on Yahoo Finance
+    ("TW000T3608Y4", "Allianz Global Investors Asian Pacific Dynamic Strategy Fund", "TWSE"),
+    ("TW000T3610Y0", "Allianz Global Investors Global Emerging Markets Fund", "TWSE"),
+    ("TW000T3605Y0", "Allianz Global Investors Global Biotech Fund", "TWSE"),
+    ("TW000T3619Y1", "Allianz Global Investors Taiwan Intelligence Trends Fund", "TWSE"),
+    ("TW000T1004Y8", "Fubon Precision Fund", "TWSE"),
+    ("TW000T0502Y2", "Yuanta Duo Fu Equity Fund", "TWSE"),
+    ("TW000T0537Y8", "Yuanta Asia Pacific Growth Fund", "TWSE"),
+    ("TW000T0557Y6", "Yuanta India Fund", "TWSE"),
+    ("TW000T0587Y3", "Yuanta/P-shares MSCI Indonesia Index Fund", "TWSE"),
+    ("TW000T0503Y0", "Yuanta Duo Duo Equity Fund", "TWSE"),
+    ("TW000T3220Y8", "Nomura Global Equity TWD Fund", "TWSE"),
+    ("TW000T4115Y9", "KGI ICABR Fund", "TWSE"),
+]
+
 BOND_ETF_TICKERS = [
     # US Treasury ETFs
     ("00679B", "Yuanta US Treasury 20+ Year Bond ETF", "TPEx"),
@@ -200,12 +217,16 @@ def fetch_twse_tickers() -> list:
     for bond in BOND_ETF_TICKERS:
         tickers.append(bond)
 
+    # Append mutual fund ISINs (not covered by ISIN page scraper)
+    for fund_isin, fund_name, fund_market in MUTUAL_FUND_ISINS:
+        tickers.append((fund_isin, fund_name, fund_market))
+
     # Save the list to a text file for reference
     list_path = os.path.join(DATA_DIR, "twse_tickers.txt")
     with open(list_path, "w", encoding="utf-8") as f:
         f.write("\n".join(f"{symbol},{name},{market}" for symbol, name, market in tickers))
 
-    print(f"Successfully scraped {len(tickers)} Taiwanese tickers (incl. bond ETFs).")
+    print(f"Successfully scraped {len(tickers)} Taiwanese tickers (incl. bonds + funds).")
     return tickers
 
 

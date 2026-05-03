@@ -43,7 +43,10 @@ export default function MarketAnalysis() {
   const location = useLocation();
   const navigate = useNavigate();
   const isAllStocks = tickerId === 'all';
-  const activeTicker = isAllStocks ? '2330' : (tickerId || '2330');
+  const isBonds = tickerId === 'bonds';
+  const isFunds = tickerId === 'funds';
+  const isOverview = isAllStocks || isBonds || isFunds;
+  const activeTicker = isOverview ? '2330' : (tickerId || '2330');
   const searchParams = new URLSearchParams(location.search);
   const indicatorSearch = (searchParams.get('indicator') || '').toLowerCase();
   const [historicalData, setHistoricalData] = useState<any[]>([]);
@@ -213,7 +216,7 @@ export default function MarketAnalysis() {
   };
 
   useEffect(() => {
-    if (isAllStocks) return;
+    if (isOverview) return;
     setLoading(true);
     const loadData = async () => {
       try {
@@ -344,6 +347,15 @@ export default function MarketAnalysis() {
     ? tickers.filter((t) => t.industry === currentIndustry)
     : filteredTickers;
 
+  // Filter for bond ETFs (symbol ends with 'B' or matches known bond patterns)
+  const bondTickers = tickers.filter((t) =>
+    /^\d{5,6}B/.test(t.symbol) || t.name.toLowerCase().includes('bond') || t.name.toLowerCase().includes('treasury')
+  );
+  // Filter for mutual funds (ISIN-based symbols starting with TW000T)
+  const fundTickers = tickers.filter((t) =>
+    t.symbol.startsWith('TW000T')
+  );
+
   const renderBoard = (title: string, data: any[], showRefresh = true) => (
     <div className="border border-gray-200 rounded shadow-sm bg-white p-4">
       <div className="flex justify-between items-center mb-4">
@@ -413,15 +425,20 @@ export default function MarketAnalysis() {
     </div>
   );
 
-  // /analysis/all — show only the Taiwan Board
-  if (isAllStocks) {
+  // Overview pages — show filtered board without chart
+  if (isOverview) {
+    const title = isBonds ? 'Taiwan Bond ETFs' : isFunds ? 'Taiwan Mutual Funds' : 'Taiwan Board';
+    const desc = isBonds ? 'Exchange-traded bond funds listed on TWSE/TPEx' :
+                 isFunds ? 'Mutual funds available on Yahoo Finance' :
+                 'All listed Taiwanese stocks with live prices';
+    const data = isBonds ? bondTickers : isFunds ? fundTickers : filteredTickers;
     return (
       <div className="p-8 text-gray-800">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Taiwan Board</h2>
-          <p className="text-sm text-gray-500 mt-1">All listed Taiwanese stocks with live prices</p>
+          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+          <p className="text-sm text-gray-500 mt-1">{desc}</p>
         </div>
-        {renderBoard('Taiwan Board', filteredTickers)}
+        {renderBoard(title, data, !isBonds && !isFunds)}
       </div>
     );
   }
