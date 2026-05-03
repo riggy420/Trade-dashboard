@@ -313,7 +313,7 @@ export default function Dashboard() {
     return counts;
   }, [trades, tickers]);
 
-  // Cumulative returns: matches Unrealized P&L card's calculation
+  // Cumulative returns: tracks Total P&L (realized + unrealized) over time
   const cumulativeReturns = useMemo(() => {
     if (!trades.length || !holdingsWithPnl.length) return [];
     const sorted = [...trades].sort((a, b) => new Date(a.traded_at).getTime() - new Date(b.traded_at).getTime());
@@ -322,23 +322,27 @@ export default function Dashboard() {
     const spanMs = lastTime - firstTime;
     const intervalMs = spanMs < 3 * 86400000 ? 3600000 : spanMs < 14 * 86400000 ? 14400000 : 86400000;
 
-    // Same values as Unrealized P&L card
-    const totalCost = holdingsWithPnl.reduce((s, h) => s + h.costBasis, 0);
-    const totalValue = holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0);
-    const finalPct = totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
+    const totalUnrealized = holdingsWithPnl.reduce((s, h) => s + (h.pnl ?? 0), 0);
+    const finalTotalPnl = realizedPnl + totalUnrealized;
 
-    // Cumulate cost from BUY trades only (same as backend avg_buy_price method)
-    let cumCost = 0;
+    // Track realized + cumulative invested through time
+    let cumInvested = 0;
+    let cumRealized = 0;
+    const symPos: Record<string, { qty: number; cost: number }> = {};
     let tradeIdx = 0;
     const data: any[] = [];
+
     for (let ts = firstTime; ts <= lastTime; ts += intervalMs) {
       while (tradeIdx < sorted.length && new Date(sorted[tradeIdx].traded_at).getTime() <= ts) {
         const t = sorted[tradeIdx];
-        if (t.side === 'BUY') cumCost += Number(t.price) * t.volume;
+        if (!symPos[t.symbol]) symPos[t.symbol] = { qty: 0, cost: 0 };
+        const p = symPos[t.symbol];
+        if (t.side === 'BUY') { p.qty += t.volume; p.cost += Number(t.total_value); cumInvested += Number(t.total_value); }
+        else { const avg = p.qty > 0 ? p.cost / p.qty : 0; cumRealized += Number(t.total_value) - (avg * t.volume); p.qty -= t.volume; p.cost -= avg * t.volume; }
         tradeIdx++;
       }
-      const progress = totalCost > 0 ? Math.min(1, cumCost / totalCost) : 0;
-      const pct = progress * finalPct;
+      const progress = totalInvested > 0 ? Math.min(1, cumInvested / totalInvested) : 0;
+      const pct = totalInvested > 0 ? (progress * finalTotalPnl / totalInvested) * 100 : 0;
       const d = new Date(ts);
       const label = intervalMs < 86400000
         ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -348,7 +352,7 @@ export default function Dashboard() {
 
     const step = Math.max(1, Math.floor(data.length / 30));
     return data.filter((_, i) => i % step === 0);
-  }, [trades, holdingsWithPnl]);
+  }, [trades, holdingsWithPnl, realizedPnl, totalInvested]);
 
   return (
     <div className="p-8 text-gray-800">
@@ -513,7 +517,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <h3 className="text-sm font-bold text-gray-700 mb-1">Cumulative Returns</h3>
-            <p className="text-[10px] text-gray-400 mb-2">Cumulative P&amp;L % from trade history</p>
+            <p className="text-[10px] text-gray-400 mb-2">Total P&amp;L (realized + unrealized) over time</p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={cumulativeReturns}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
