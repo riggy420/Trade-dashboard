@@ -19,15 +19,12 @@ interface Props {
   onSuccess: () => void;
 }
 
-const ASSET_TYPES = ['stock', 'bond', 'mutual_fund'] as const;
-
 export default function EditTradeModal({ trade, onClose, onSuccess }: Props) {
   const [symbol, setSymbol] = useState(trade.symbol);
   const [name, setName] = useState(trade.name);
   const [side, setSide] = useState(trade.side);
   const [price, setPrice] = useState(String(trade.price));
   const [volume, setVolume] = useState(String(trade.volume));
-  const [assetType, setAssetType] = useState(trade.asset_type || 'stock');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,7 +38,6 @@ export default function EditTradeModal({ trade, onClose, onSuccess }: Props) {
         side,
         price: parseFloat(price) || 0,
         volume: parseInt(volume) || 0,
-        asset_type: assetType,
       });
       onSuccess();
       onClose();
@@ -99,18 +95,6 @@ export default function EditTradeModal({ trade, onClose, onSuccess }: Props) {
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Volume</label>
               <input type="number" value={volume} onChange={(e) => setVolume(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Asset Type</label>
-            <div className="flex gap-2">
-              {ASSET_TYPES.map((a) => (
-                <button key={a} type="button" onClick={() => setAssetType(a)}
-                  className={`flex-1 py-2 rounded border text-sm font-medium capitalize ${assetType === a ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'}`}>
-                  {a === 'mutual_fund' ? 'Mutual Fund' : a}
-                </button>
-              ))}
             </div>
           </div>
 
