@@ -109,14 +109,9 @@ export const fetchSectorDetails = async (sectorName: string) => {
   return response.data;
 };
 
-// 7. Supervision
-export const fetchSupervisionScan = async () => {
-  const response = await api.get(`/supervision/scan`);
-  return response.data;
-};
-
-export const fetchSupervisionDetail = async (ticker: string) => {
-  const response = await api.get(`/supervision/${ticker}`);
+// 7. Fundamentals
+export const fetchFundamentals = async (symbol: string) => {
+  const response = await api.get(`/fundamentals/${encodeURIComponent(symbol)}`);
   return response.data;
 };
 

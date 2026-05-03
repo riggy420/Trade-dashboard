@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers, fetchHoldings, fetchSymbolHistory } from '../api/endpoints';
+import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -16,8 +16,6 @@ export default function Dashboard() {
   const [constituentsLoading, setConstituentsLoading] = useState(false);
   const [indexHistory, setIndexHistory] = useState<{ date: string; close: number }[]>([]);
   const [indexHistoryLoading, setIndexHistoryLoading] = useState(false);
-  const [supervisionAlerts, setSupervisionAlerts] = useState<any[]>([]);
-  const [supervisionLoading, setSupervisionLoading] = useState(false);
   const [holdings, setHoldings] = useState<any[]>([]);
   const [positionModal, setPositionModal] = useState<{ symbol: string; name: string } | null>(null);
   const [positionHistory, setPositionHistory] = useState<any[]>([]);
@@ -381,67 +379,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Regulatory Alert List — collapsed below charts */}
-      <details className="mb-8">
-        <summary className="cursor-pointer flex items-center justify-between bg-white border border-gray-200 rounded px-4 py-2 shadow-sm">
-          <h2 className="text-red-600 font-bold text-lg inline">Regulatory Alert List</h2>
-          {!supervisionLoading && supervisionAlerts.length > 0 && (
-            <span className="text-xs text-gray-500 ml-4">
-              {supervisionAlerts.filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH').length} flagged
-            </span>
-          )}
-        </summary>
-        {supervisionLoading ? (
-          <p className="text-sm text-gray-400 italic mt-3">Scanning stocks for regulatory signals...</p>
-        ) : supervisionAlerts.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-3">No supervision data available.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
-            {supervisionAlerts
-              .filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH')
-              .slice(0, 6)
-              .map((alert: any, i: number) => (
-                <div
-                  key={i}
-                  className={`border rounded p-4 cursor-pointer hover:shadow-md transition ${alert.risk_level === 'CRITICAL' ? 'border-red-300 bg-red-50' : 'border-orange-200 bg-orange-50'}`}
-                  onClick={() => navigate(`/analysis/${alert.symbol}`)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-bold text-gray-900">{alert.symbol}</span>
-                      <span className="ml-2 text-sm text-gray-600 truncate">{alert.name}</span>
-                    </div>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded shrink-0 ${alert.risk_level === 'CRITICAL' ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}`}>
-                      {alert.risk_level}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-3">
-                    <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                      <div
-                        className={`h-1.5 rounded-full ${alert.risk_level === 'CRITICAL' ? 'bg-red-500' : 'bg-orange-400'}`}
-                        style={{ width: `${alert.total_score}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-gray-700 shrink-0">{alert.total_score}/100</span>
-                  </div>
-                  {alert.triggered_articles.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {alert.triggered_articles.map((art: string, j: number) => (
-                        <span key={j} className="text-xs bg-white border border-gray-300 text-gray-700 px-1.5 py-0.5 rounded">
-                          {art}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            {supervisionAlerts.filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH').length === 0 && (
-              <p className="text-sm text-green-700 col-span-3">No HIGH or CRITICAL risk stocks detected.</p>
-            )}
-          </div>
-        )}
-      </details>
 
       {/* Taiwan Indices Overview */}
       <div className="mb-8">

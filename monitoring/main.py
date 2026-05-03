@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from scrape.scrape import fetch_intraday, fetch_historical_5y, fetch_twse_tickers, fetch_all_intraday, fetch_all_sectors, fetch_all_indices, get_index_constituents, fetch_index_history
 from analysis_utils import build_analysis_payload
-from supervision.supervision_utils import score_stock, scan_all_stocks
 from db.database import (
     create_db_pool, create_user, get_user_by_username,
     get_watchlist, add_to_watchlist, remove_from_watchlist,
@@ -25,6 +24,7 @@ from auth import (
 )
 import json
 import os
+import re
 import asyncio
 import uuid
 from datetime import datetime, timedelta
@@ -359,13 +359,21 @@ def get_tickers(_user: dict = Depends(get_current_user)):
                         pass
                     break
                 
+        # Determine industry: bonds, mutual funds, or from sector data
+        if re.match(r'^\d{4,6}B', symbol):
+            industry = "Bonds"
+        elif symbol.startswith("TW000T"):
+            industry = "Mutual Funds"
+        else:
+            industry = industry_map.get(symbol, "Unknown")
+
         results.append({
             "symbol": symbol,
             "name": name,
             "market": market,
             "price": price,
             "change": change,
-            "industry": industry_map.get(symbol, "Unknown")
+            "industry": industry,
         })
         
     import zipfile
@@ -707,52 +715,6 @@ def get_index_constituents_endpoint(sector_or_index: str, _user: dict = Depends(
     }
 
 
-@app.get("/api/supervision/scan")
-def get_supervision_scan(_user: dict = Depends(get_current_user)):
-    """
-    Scans all stocks with cached historical data and returns a risk-sorted list.
-    Only returns stocks with MEDIUM risk or above (score >= 20) to keep the response lean.
-    """
-    try:
-        results = scan_all_stocks()
-        flagged = [r for r in results if r["total_score"] >= 20]
-        return {
-            "total_scanned": len(results),
-            "total_flagged": len(flagged),
-            "stocks": flagged,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Supervision scan failed: {str(e)}")
-
-
-@app.get("/api/supervision/{ticker}")
-def get_supervision_detail(ticker: str, _user: dict = Depends(get_current_user)):
-    """Returns detailed supervision signals for a single stock."""
-    symbol = ticker.replace(".TW", "").replace(".TWO", "")
-    try:
-        result = score_stock(symbol)
-        return {
-            "symbol": result.symbol,
-            "name": result.name,
-            "total_score": result.total_score,
-            "risk_level": result.risk_level,
-            "triggered_articles": result.triggered_articles,
-            "safe_harbor": result.safe_harbor,
-            "safe_harbor_reason": result.safe_harbor_reason,
-            "signals": [
-                {
-                    "article": s.article,
-                    "description": s.description,
-                    "triggered": s.triggered,
-                    "score_contribution": round(s.score_contribution, 1),
-                    "details": s.details,
-                    "caveat": s.caveat,
-                }
-                for s in result.signals
-            ],
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Supervision detail failed: {str(e)}")
 
 
 # ---------------------------------------------------------------------------
@@ -950,6 +912,22 @@ async def _pending_order_checker():
                         print(f"Failed to execute pending order {order['id']}: {e}")
         except Exception as e:
             print(f"Pending order checker error: {e}")
+
+
+@app.get("/api/fundamentals/{symbol}")
+def get_fundamentals(symbol: str, _user: dict = Depends(get_current_user)):
+    """Return cached P/E, ROE, EPS, Beta, Market Cap for a symbol."""
+    try:
+        from redis import Redis as SyncRedis
+        r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True, socket_connect_timeout=2)
+        r.ping()
+        raw = r.get(f"fundamentals:{symbol}")
+        if raw:
+            return json.loads(raw)
+    except Exception:
+        pass
+    # Return empty if not cached
+    return {"symbol": symbol, "pe": None, "roe": None, "eps": None, "beta": None, "market_cap": None}
 
 
 @app.get("/api/data/index-history/{index_name}")
