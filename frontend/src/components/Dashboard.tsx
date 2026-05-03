@@ -293,47 +293,54 @@ export default function Dashboard() {
     return counts;
   }, [trades, tickers]);
 
-  // Cumulative returns: portfolio value from trade history + current prices
+  // Cumulative returns: hourly data points from first trade to now
   const cumulativeReturns = useMemo(() => {
     if (!trades.length) return [];
     const sorted = [...trades].sort((a, b) => new Date(a.traded_at).getTime() - new Date(b.traded_at).getTime());
-    // Build cumulative P&L timeline
+    const firstTime = new Date(sorted[0].traded_at).getTime();
+    const lastTime = Date.now();
+    const spanMs = lastTime - firstTime;
+    // Decide granularity: hourly if span < 3 days, else every 4 hours, else daily
+    const intervalMs = spanMs < 3 * 86400000 ? 3600000 : spanMs < 14 * 86400000 ? 14400000 : 86400000;
+    const totalInvested = sorted.filter((t) => t.side === 'BUY').reduce((s, t) => s + Number(t.total_value), 0);
+    const totalUnrealized = holdingsWithPnl.reduce((s, h) => s + (h.pnl ?? 0), 0);
+
+    // Simulate trade events at their timestamps
     let invested = 0;
     let realized = 0;
-    const data: any[] = [];
     const symbolPositions: Record<string, { qty: number; cost: number }> = {};
-    for (const t of sorted) {
-      if (!symbolPositions[t.symbol]) symbolPositions[t.symbol] = { qty: 0, cost: 0 };
-      const pos = symbolPositions[t.symbol];
-      if (t.side === 'BUY') {
-        pos.qty += t.volume;
-        pos.cost += Number(t.total_value);
-        invested += Number(t.total_value);
-      } else {
-        const avgCost = pos.qty > 0 ? pos.cost / pos.qty : 0;
-        const sellVal = Number(t.total_value);
-        realized += sellVal - (avgCost * t.volume);
-        pos.qty -= t.volume;
-        pos.cost -= avgCost * t.volume;
+    let tradeIdx = 0;
+    const data: any[] = [];
+
+    for (let ts = firstTime; ts <= lastTime; ts += intervalMs) {
+      // Process any trades that happened in this interval
+      while (tradeIdx < sorted.length && new Date(sorted[tradeIdx].traded_at).getTime() <= ts) {
+        const t = sorted[tradeIdx];
+        if (!symbolPositions[t.symbol]) symbolPositions[t.symbol] = { qty: 0, cost: 0 };
+        const pos = symbolPositions[t.symbol];
+        if (t.side === 'BUY') {
+          pos.qty += t.volume;
+          pos.cost += Number(t.total_value);
+          invested += Number(t.total_value);
+        } else {
+          const avgCost = pos.qty > 0 ? pos.cost / pos.qty : 0;
+          realized += Number(t.total_value) - (avgCost * t.volume);
+          pos.qty -= t.volume;
+          pos.cost -= avgCost * t.volume;
+        }
+        tradeIdx++;
       }
-      const unrealized = holdingsWithPnl.reduce((s, h) => s + (h.pnl ?? 0), 0);
-      const cumPnl = realized + unrealized;
-      const pct = invested > 0 ? (cumPnl / invested) * 100 : 0;
-      data.push({
-        date: new Date(t.traded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        pct: Math.round(pct * 100) / 100,
-      });
+      const pct = invested > 0 ? ((realized + totalUnrealized) / invested) * 100 : 0;
+      const d = new Date(ts);
+      const label = intervalMs < 86400000
+        ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+        : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      data.push({ date: label, pct: Math.round(pct * 100) / 100 });
     }
-    // Add current state as final point
-    const totalUnrealized = holdingsWithPnl.reduce((s, h) => s + (h.pnl ?? 0), 0);
-    const totalInvested = trades.filter((t) => t.side === 'BUY').reduce((s, t) => s + Number(t.total_value), 0);
-    const finalPct = totalInvested > 0 ? ((realized + totalUnrealized) / totalInvested) * 100 : 0;
-    data.push({
-      date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      pct: Math.round(finalPct * 100) / 100,
-    });
-    // Return last 14 data points or all if fewer
-    return data.slice(-14);
+
+    // Limit to max 30 points for readability
+    const step = Math.max(1, Math.floor(data.length / 30));
+    return data.filter((_, i) => i % step === 0);
   }, [trades, holdingsWithPnl]);
 
   return (
