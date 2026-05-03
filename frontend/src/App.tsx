@@ -100,9 +100,9 @@ function AppShell() {
           <Link to="/" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-black font-semibold text-black transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">⊞</span> Dashboard</span>
           </Link>
-          <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📈</span> Market Analysis</span>
-          </Link>
+          {/* <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition"> */}
+            {/* <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📈</span> Market Analysis</span> */}
+          {/* </Link> */}
           <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📋</span> All Stocks</span>
           </Link>
@@ -120,7 +120,7 @@ function AppShell() {
           </Link>
         </nav>
         <nav className="mb-4 text-sm border-t border-gray-100 pt-2">
-          <div className="block py-3 px-6 text-gray-400 hover:bg-gray-50 transition cursor-pointer">⚙ Settings</div>
+          {/* <div className="block py-3 px-6 text-gray-400 hover:bg-gray-50 transition cursor-pointer">⚙ Settings</div> */}
           <button onClick={logout} className="w-full text-left block py-3 px-6 text-red-500 hover:bg-red-50 transition">
             ⏻ Sign out
           </button>

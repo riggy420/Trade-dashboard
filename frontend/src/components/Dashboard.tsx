@@ -246,17 +246,6 @@ export default function Dashboard() {
     return top;
   }, [holdingsWithPnl, tickers]);
 
-  const watchlistMovers = watchlistItems
-    .filter((w) => w.item_type === 'stock')
-    .map((w) => {
-      const ticker = tickers.find((t) => t.symbol === w.symbol);
-      if (!ticker) return null;
-      const changeNum = parseFloat(ticker.change) || 0;
-      return { ...ticker, absChange: Math.abs(changeNum), changeNum };
-    })
-    .filter(Boolean)
-    .sort((a: any, b: any) => b.absChange - a.absChange);
-
   return (
     <div className="p-8 text-gray-800">
       {/* Portfolio Summary — always visible */}
@@ -324,32 +313,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Watchlist Movers */}
-      {watchlistMovers.length > 0 && (
-        <div className="mb-6 bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
-          <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Watchlist Movers</span>
-            <span className="text-xs text-gray-400">sorted by volatility</span>
-          </div>
-          <div className="flex overflow-x-auto divide-x divide-gray-100">
-            {watchlistMovers.map((t: any) => (
-              <button
-                key={t.symbol}
-                type="button"
-                onClick={() => navigate(`/analysis/${t.symbol}`)}
-                className="flex-shrink-0 px-5 py-3 text-left hover:bg-gray-50 transition min-w-[130px]"
-              >
-                <div className="font-bold text-gray-900 text-sm">{t.symbol}</div>
-                <div className="text-xs text-gray-500 truncate max-w-[110px]">{t.name}</div>
-                <div className="mt-1 font-semibold text-sm">{t.price}</div>
-                <div className={`text-xs font-semibold ${t.changeNum >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {t.change}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
       {/* Portfolio Charts */}
       {holdingsWithPnl.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -398,7 +361,8 @@ export default function Dashboard() {
                   {industryPieData.map((d, i) => (
                     <div key={d.name} className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className="text-gray-600 truncate max-w-[100px]">{d.name}</span>
+                      <span className="text-gray-600 truncate max-w-[140px]" title={d.name}>{d.name}</span>
+                      <span className="text-gray-400 ml-auto text-[10px]">{((d.value / (assetPieData[0]?.value || 1)) * 100).toFixed(0)}%</span>
                     </div>
                   ))}
                 </div>

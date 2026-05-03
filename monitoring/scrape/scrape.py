@@ -213,6 +213,11 @@ def fetch_twse_tickers() -> list:
     # Remove duplicates and sort
     tickers = sorted([(symbol, meta[0], meta[1]) for symbol, meta in tickers.items()], key=lambda item: item[0])
 
+    # Limit TW stocks for fast bootstrapping (env: TICKER_LIMIT=50 = 50 stocks)
+    ticker_limit = int(os.getenv("TICKER_LIMIT", "0"))
+    if ticker_limit > 0:
+        tickers = tickers[:ticker_limit]
+
     # Append bond ETF tickers (not covered by ISIN page scraper)
     for bond in BOND_ETF_TICKERS:
         tickers.append(bond)

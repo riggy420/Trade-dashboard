@@ -86,9 +86,9 @@ async def _bootstrap_data():
     # If no intraday data at all, scrape a fast starter batch
     latest = _get_latest_intraday_cache_time()
     if latest is None:
-        print("No intraday cache found — seeding with starter batch of 100 stocks...")
+        print("No intraday cache found — seeding with starter batch of 50 stocks...")
         try:
-            await _run_intraday_refresh(limit=100)
+            await _run_intraday_refresh(limit=50)
         except Exception as e:
             print(f"Starter batch failed: {e}")
 
