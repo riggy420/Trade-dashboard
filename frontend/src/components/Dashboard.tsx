@@ -372,11 +372,17 @@ export default function Dashboard() {
             <p className={`text-lg font-black mt-1 ${realizedPnl >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
               {realizedPnl >= 0 ? '+' : ''}{fmtNT(realizedPnl)}
             </p>
+            <p className={`text-[10px] font-bold mt-0.5 ${realizedPnl >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+              {portfolioSummary.totalCost > 0 ? `${realizedPnl >= 0 ? '+' : ''}${((realizedPnl / portfolioSummary.totalCost) * 100).toFixed(2)}%` : '—'}
+            </p>
           </div>
           <div className={`rounded-lg p-3 shadow-sm border ${(portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-purple-50 border-purple-200' : 'bg-pink-50 border-pink-200'}`}>
             <p className="text-[10px] uppercase font-semibold tracking-wide text-gray-600">Unrealized</p>
             <p className={`text-lg font-black mt-1 ${(portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-purple-700' : 'text-pink-700'}`}>
               {portfolioSummary.totalValue - portfolioSummary.totalCost >= 0 ? '+' : ''}{fmtNT(portfolioSummary.totalValue - portfolioSummary.totalCost)}
+            </p>
+            <p className={`text-[10px] font-bold mt-0.5 ${portfolioSummary.pnlPct >= 0 ? 'text-purple-500' : 'text-pink-500'}`}>
+              {portfolioSummary.totalCost > 0 ? `${portfolioSummary.pnlPct >= 0 ? '+' : ''}${portfolioSummary.pnlPct.toFixed(2)}%` : '—'}
             </p>
           </div>
           <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
