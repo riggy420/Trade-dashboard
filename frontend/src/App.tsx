@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import MarketAnalysis from './components/MarketAnalysis';
@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WatchlistProvider } from './context/WatchlistContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
+import { getTickers } from './api/endpoints';
 
 const indicatorKeywords = new Set(['close', 'sma', 'sma5', 'ema', 'ema5', 'rsi', 'rsi14', 'mfi', 'mfi14', 'volume', 'volatility']);
 
@@ -20,6 +21,43 @@ function AppShell() {
   const { notifications, unreadCount, markAllRead, clearAll } = useNotifications();
   const [searchValue, setSearchValue] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [allTickers, setAllTickers] = useState<any[]>([]);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Fetch tickers once for search indexing
+  useEffect(() => {
+    getTickers().then((data) => setAllTickers(data.tickers || [])).catch(() => {});
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSearchInput = (value: string) => {
+    setSearchValue(value);
+    if (!value.trim()) { setSearchResults([]); setShowDropdown(false); return; }
+    const q = value.toLowerCase();
+    const matches = allTickers.filter((t) =>
+      t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)
+    ).slice(0, 5);
+    setSearchResults(matches);
+    setShowDropdown(matches.length > 0);
+  };
+
+  const selectResult = (symbol: string) => {
+    setSearchValue('');
+    setShowDropdown(false);
+    navigate(`/analysis/${symbol}`);
+  };
 
   const activeTicker = useMemo(() => {
     const pathParts = location.pathname.split('/').filter(Boolean);
@@ -33,13 +71,17 @@ function AppShell() {
     const normalizedValue = rawValue.toLowerCase();
     const cleanedTicker = rawValue.replace(/\.(tw|two)$/i, '');
     if (/^\d{4}$/.test(cleanedTicker)) {
-      navigate(`/analysis/${cleanedTicker}`);
-      setSearchValue('');
+      selectResult(cleanedTicker);
       return;
     }
     if (indicatorKeywords.has(normalizedValue)) {
       navigate(`/analysis/${activeTicker}?indicator=${normalizedValue}`);
       setSearchValue('');
+      return;
+    }
+    // If there's a match, go to first result
+    if (searchResults.length > 0) {
+      selectResult(searchResults[0].symbol);
       return;
     }
     navigate(`/analysis/${cleanedTicker}?indicator=${normalizedValue}`);
@@ -87,16 +129,36 @@ function AppShell() {
 
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         <header className="bg-white border-b border-gray-200 px-8 py-3 flex justify-between items-center z-20">
-          <div className="w-1/2 bg-gray-50 flex items-center px-4 py-2 rounded-md border border-gray-200">
-            <span className="mr-2 text-gray-400 w-4 h-4 rounded-full border border-gray-400 inline-block text-center text-xs leading-none">?</span>
-            <input
-              type="text"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-              className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
-              placeholder="Search ticker or indicator (sma5, ema5, rsi, mfi, volume...)"
-            />
+          <div className="w-1/2 relative" ref={searchRef}>
+            <div className="bg-gray-50 flex items-center px-4 py-2 rounded-md border border-gray-200">
+              <span className="mr-2 text-gray-400 w-4 h-4 rounded-full border border-gray-400 inline-block text-center text-xs leading-none">?</span>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+                onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
+                className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
+                placeholder="Search by ticker or name (AAPL, TSMC, Microsoft...)"
+              />
+            </div>
+            {showDropdown && searchResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                {searchResults.map((r) => (
+                  <button
+                    key={r.symbol}
+                    onClick={() => selectResult(r.symbol)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-center justify-between border-b border-gray-50 last:border-b-0"
+                  >
+                    <div>
+                      <span className="font-bold text-blue-600 text-sm">{r.symbol}</span>
+                      <span className="text-xs text-gray-400 ml-2">{r.market || ''}</span>
+                    </div>
+                    <span className="text-xs text-gray-600 truncate max-w-[200px]">{r.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative">

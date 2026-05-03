@@ -1,141 +1,180 @@
-# Assessment Progress Roadmap
+# Assessment Scorecard & Roadmap
 
 > Technology Industrial Placement Program 2026 — Portfolio Management Dashboard
 
-## Legend
-- ✅ Complete — ❌ Not started
+---
+
+## Scoring Rubric
+
+Each requirement scored 0–10 based on:
+- **Completeness**: Does it do what was asked?
+- **Quality**: Is it well-implemented, robust, polished?
+- **Extras**: Does it go beyond the minimum?
 
 ---
 
-## 1. User Authentication (JWT) — ✅
+## 1. User Authentication (JWT) — 9/10
 
-| # | Requirement | Status |
-|---|-----------|--------|
-| 1.1 | Register endpoint | ✅ `POST /api/auth/register` |
-| 1.2 | Login endpoint | ✅ `POST /api/auth/login` — access + refresh token pair |
-| 1.3 | Token refresh | ✅ `POST /api/auth/refresh` — silent refresh via axios interceptor |
-| 1.4 | Protected routes | ✅ `ProtectedRoute.tsx` guards all app routes |
-| 1.5 | Logout | ✅ Clears tokens + redirects to `/login` |
-| 1.6 | Frontend forms | ✅ LoginPage + RegisterPage with validation |
-| 1.7 | nginx auth forwarding | ✅ `proxy_set_header Authorization $http_authorization` |
+| Criteria | Score | Notes |
+|----------|-------|-------|
+| Register endpoint | ✅ | `POST /api/auth/register` — username, email, password with validation |
+| Login → JWT tokens | ✅ | Access (15 min) + Refresh (7 days) HS256 |
+| Token refresh | ✅ | Silent refresh via axios interceptor, queues concurrent 401s |
+| Logout | ✅ | Clears tokens, redirects to /login |
+| Route protection | ✅ | `ProtectedRoute.tsx` guards all app routes |
+| Inactivity timeout | ✅ | Auto-logout after 30 min idle |
+| nginx auth forwarding | ✅ | `proxy_set_header Authorization $http_authorization` |
+
+**Deduction (-1)**: No password strength requirements beyond 8-char minimum. Plaintext storage (dev choice). No rate limiting on login attempts.
 
 **Files**: `monitoring/auth.py`, `frontend/src/context/AuthContext.tsx`, `frontend/nginx.conf`
 
 ---
 
-## 2. Portfolio Overview Dashboard — ✅
+## 2. Portfolio Overview — 8/10
 
-| # | Requirement | Status |
-|---|-----------|--------|
-| 2.1 | Portfolio value cards | ✅ Total Value, Total P&L (green/red), Holdings count |
-| 2.2 | Current value per holding | ✅ Live market price from Redis/ticker feed, refreshed every 60s |
-| 2.3 | Purchase price per holding | ✅ Weighted average buy price from PostgreSQL |
-| 2.4 | Performance metrics (P&L %) | ✅ Real-time unrealized P&L per holding |
-| 2.5 | Holdings strip | ✅ Horizontal scrollable cards with symbol, shares, avg buy, current price, P&L% |
-| 2.6 | Watchlist Movers strip | ✅ Most volatile watchlisted stocks |
-| 2.7 | Position history modal | ✅ Click any holding → full buy/sell history for that symbol |
-| 2.8 | Empty portfolio state | ✅ Shows zero values with hint message |
-| 2.9 | PostgreSQL-first data | ✅ Positions loaded from DB first, 0% P&L until Redis prices arrive |
-| 2.10 | Login pre-caching | ✅ Background ticker + intraday refresh triggered on login |
+| Criteria | Score | Notes |
+|----------|-------|-------|
+| Portfolio dashboard | ✅ | Live Dashboard with total value, P&L, holdings count |
+| Asset summary | ✅ | Stocks (1970 TW + 50 US), bonds (78 TW + 16 US ETFs), mutual funds (12 TW + 20 US) |
+| Current value | ✅ | Live prices from Redis/yfinance, refreshed every 60s |
+| Purchase price | ✅ | Weighted avg buy price computed from PostgreSQL trade history |
+| Performance metrics | ✅ | Per-holding unrealized P&L (NT$ + %), portfolio-level total P&L |
+| Holdings strip | ✅ | Horizontal scrollable cards with symbol, shares, avg buy, current, P&L% |
+| Empty state | ✅ | Shows zero values with guidance message |
+| Market toggle | ✅ | Taiwan ↔ US market switch in sidebar |
+
+**Deductions (-2)**:
+- Bond/mutual fund performance metrics use cost basis as current value (no live pricing for non-stock assets)
+- No allocation pie chart or visual portfolio breakdown
+- Industry data requires manual sector scrape to populate
 
 **Files**: `frontend/src/components/Dashboard.tsx`, `monitoring/db/database.py`
 
 ---
 
-## 3. Transaction History — ✅
+## 3. Transaction History — 9/10
 
-| # | Requirement | Status |
-|---|-----------|--------|
-| 3.1 | Buy/sell history table | ✅ Full table with date, symbol, name, side, type, price, limit, volume, total |
-| 3.2 | Summary stats | ✅ Total trades, total bought, total sold, net invested |
-| 3.3 | Open Positions table | ✅ Shares held, cost basis, avg price per symbol — clickable to analysis |
-| 3.4 | Completed trades immutable | ✅ No edit/delete on executed trades (PostgreSQL = final) |
-| 3.5 | Loading + empty states | ✅ |
+| Criteria | Score | Notes |
+|----------|-------|-------|
+| View buy/sell history | ✅ | Full table with date, symbol, name, side, type, price, volume, total |
+| Summary statistics | ✅ | Total trades, total bought, total sold, net invested, unrealized P&L |
+| Open positions table | ✅ | Shares held, cost basis, avg price — clickable to analysis |
+| Side badges | ✅ | Green BUY / Red SELL badges |
+| Empty/loading states | ✅ | Proper loading spinner and empty guidance |
+| Completed trades immutable | ✅ | No edit/delete on executed trades |
+| Tabbed layout | ✅ | Order History / Pending Orders tabs with count badges |
+
+**Deduction (-1)**: No CSV/PDF export. No date range filtering.
 
 **Files**: `frontend/src/components/ReportsPage.tsx`, `monitoring/main.py`
 
 ---
 
-## 4. Add / Edit Investments — ✅
+## 4. Add / Edit Investments — 8/10
 
-| # | Requirement | Status |
-|---|-----------|--------|
-| 4.1 | Market orders | ✅ Two-step confirmation modal, executes at current price |
-| 4.2 | Limit orders | ✅ Limit price input with live met/not-met indicator |
-| 4.3 | Pending limit queue | ✅ Orders queued in Redis, 30s background checker auto-executes |
-| 4.4 | Edit pending orders | ✅ Inline edit limit price + volume in Pending Orders tab |
-| 4.5 | Cancel pending orders | ✅ Removes from Redis queue |
-| 4.6 | Sell validation | ✅ Net position check, oversell prevention |
+| Criteria | Score | Notes |
+|----------|-------|-------|
+| Add new buy/sell | ✅ | Two-step market/limit order modal |
+| Market orders | ✅ | Executes at current price |
+| Limit orders | ✅ | Live met/not-met indicator, pending queue |
+| Pending order edit | ✅ | Inline edit limit price + volume |
+| Cancel pending | ✅ | Confirmation popup before cancel |
+| Sell validation | ✅ | Net position check, oversell prevention |
+| Asset types | ✅ | Stock/Bond/Mutual Fund options |
+| Trade notifications | ✅ | Push notification on execution + pending placement |
 
-**Files**: `frontend/src/components/TradeModal.tsx`, `frontend/src/components/ReportsPage.tsx`, `monitoring/main.py`, `monitoring/db/redis_client.py`
+**Deductions (-2)**:
+- Completed trades are immutable by design (PostgreSQL = final), but the assessment expects edit capability on existing investments
+- No bulk import or CSV upload
+- No stop-loss or take-profit order types
 
----
-
-## 5. Technology Stack — ✅
-
-| # | Requirement | Status |
-|---|-----------|--------|
-| 5.1 | Frontend | ✅ React 19, TypeScript, Vite, Tailwind CSS, Recharts |
-| 5.2 | Backend | ✅ Python FastAPI, asyncpg, yfinance |
-| 5.3 | Database | ✅ PostgreSQL 16 (users, watchlist, trades tables) |
-| 5.4 | Cache | ✅ Redis 7 (intraday OHLCV data, pending limit order queue) |
-| 5.5 | Git version control | ✅ 14+ meaningful commits |
+**Files**: `frontend/src/components/TradeModal.tsx`, `frontend/src/components/ReportsPage.tsx`
 
 ---
 
-## 6. Docker Deliverable — ✅
+## 5. Technology Stack — 10/10
 
-| # | Requirement | Status |
-|---|-----------|--------|
-| 6.1 | Dockerfile (backend) | ✅ Python 3.11-slim, uvicorn |
-| 6.2 | Dockerfile (frontend) | ✅ Multi-stage node build → nginx serve |
-| 6.3 | Docker Compose | ✅ 4 services: db, redis, backend, frontend |
-| 6.4 | nginx reverse proxy | ✅ Static files + /api/ proxy + SPA fallback |
-| 6.5 | PostgreSQL in container | ✅ postgres:16-alpine with healthcheck + init |
-| 6.6 | Redis in container | ✅ redis:7-alpine with AOF persistence |
-| 6.7 | DB connection retry | ✅ 5 attempts with 2s delay |
-| 6.8 | One-command startup | ✅ `docker compose up --build` |
+| Criteria | Score | Notes |
+|----------|-------|-------|
+| Frontend | ✅ | React 19, TypeScript, Vite, Tailwind CSS, Recharts |
+| Backend | ✅ | Python FastAPI, asyncpg, yfinance |
+| Database | ✅ | PostgreSQL 16 (users, watchlist, trades) + Redis 7 (intraday cache, pending orders) |
+| Version control | ✅ | 18+ meaningful commits across multiple branches |
+| Code organization | ✅ | Modular: `db/`, `scrape/`, `supervision/`, context providers |
+| Error handling | ✅ | Try/catch, fallback states, graceful Redis degradation |
+| Environment config | ✅ | Env vars for DB, Redis, JWT, API base URL |
 
----
-
-## 7. Market Data & Analysis — ✅
-
-| # | Feature | Status |
-|---|---------|--------|
-| 7.1 | All Stocks board | ✅ `/analysis/all` — sortable, searchable, 1,970 TW stocks |
-| 7.2 | Bond ETFs board | ✅ `/analysis/bonds` — 78 Taiwan bond ETFs with live prices |
-| 7.3 | Mutual Funds board | ✅ `/analysis/funds` — 12 verified Taiwan mutual funds |
-| 7.4 | Same-industry stocks | ✅ Below chart on individual analysis pages |
-| 7.5 | Candlestick chart | ✅ SMA/EMA/RSI/MFI indicators, 5D-5Y ranges, pen drawing tool |
-| 7.6 | Taiwan market indices | ✅ Industry + concept indices with 60-day sparklines |
-| 7.7 | Sector performance | ✅ Per-sector avg change, top/bottom performers |
-| 7.8 | Regulatory supervision | ✅ TWSE Articles 2-12 scored from OHLCV, risk-level alerts |
-| 7.9 | Auto-refresh | ✅ Dashboard 60s, Market hourly toggle, overview pages on-entry |
+**Files**: Entire project
 
 ---
 
-## 8. Watchlist — ✅
+## 6. Docker Deliverable — 9/10
 
-| # | Feature | Status |
-|---|---------|--------|
-| 8.1 | Star/unstar stocks | ✅ From Taiwan Board, index cards |
-| 8.2 | Watchlist page | ✅ `/watchlist` with live prices and changes |
-| 8.3 | Optimistic UI | ✅ Instant feedback, rollback on API failure |
-| 8.4 | DB persistence | ✅ Per-user in PostgreSQL |
+| Criteria | Score | Notes |
+|----------|-------|-------|
+| Dockerfile (backend) | ✅ | Python 3.11-slim, uvicorn |
+| Dockerfile (frontend) | ✅ | Multi-stage node build → nginx serve |
+| Docker Compose | ✅ | 4 services: db, redis, backend, frontend |
+| Health checks | ✅ | PostgreSQL healthcheck with `pg_isready` |
+| Data persistence | ✅ | Docker volumes for PostgreSQL + Redis AOF |
+| DB connection retry | ✅ | 5 attempts with 2s delay |
+| One-command startup | ✅ | `docker compose up --build` |
+
+**Deduction (-1)**: Backend waits for PostgreSQL but doesn't wait for Redis. Redis healthcheck not configured.
+
+**Files**: `docker-compose.yml`, `monitoring/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`
 
 ---
 
-## Summary
+## Overall Score: 53/60 (88%)
 
-| Section | Status |
-|---------|--------|
-| 1. JWT Authentication | ✅ 7/7 |
-| 2. Portfolio Dashboard | ✅ 10/10 |
-| 3. Transaction History | ✅ 5/5 |
-| 4. Add / Edit Investments | ✅ 6/6 |
-| 5. Technology Stack | ✅ 5/5 |
-| 6. Docker Deliverable | ✅ 8/8 |
-| 7. Market Data & Analysis | ✅ 9/9 |
-| 8. Watchlist | ✅ 4/4 |
+```
+1. JWT Authentication    9/10  █████████░
+2. Portfolio Overview    8/10  ████████░░
+3. Transaction History   9/10  █████████░
+4. Add/Edit Investments  8/10  ████████░░
+5. Technology Stack     10/10  ██████████
+6. Docker Deliverable    9/10  █████████░
+```
 
-**Overall**: 54/54 ✅ — All assessment requirements met.
+---
+
+## Suggested Improvements
+
+### High Impact (worth implementing before submission)
+
+1. **Add password hashing** — current plaintext storage is a security concern. Switch to bcrypt (`passlib[bcrypt]`). ~15 minutes.
+
+2. **Portfolio allocation visual** — add a simple donut/pie chart on the Dashboard showing portfolio breakdown by asset type (stocks vs bonds vs funds). Recharts already imported. ~20 minutes.
+
+3. **Edit completed trades** — assessment explicitly says "edit existing ones." Add back the edit modal with a warning that it changes historical records. ~10 minutes (EditTradeModal already exists).
+
+4. **Redis healthcheck in docker-compose** — simple `redis-cli ping` check. ~2 minutes.
+
+### Medium Impact
+
+5. **Date range filter on transaction history** — simple "From / To" date inputs above the table. ~20 minutes.
+
+6. **Settings page** — wire up the existing ⚙ Settings sidebar link with language toggle (EN/ZH) and market preference. Already planned. ~30 minutes.
+
+7. **Password strength indicator** — visual bar on Register page showing password requirements. ~15 minutes.
+
+### Low Impact (nice to have)
+
+8. **CSV export** — download button on Reports page. ~15 minutes.
+
+9. **Dark mode** — Tailwind dark variant. ~30 minutes.
+
+10. **Audit log** — immutable log of all trade edits/deletes for compliance. ~30 minutes (new DB table + middleware).
+
+---
+
+## Branch Summary
+
+| Branch | Purpose | Status |
+|--------|---------|--------|
+| `manulife` | Original development | Archived |
+| `manulife-v2` | Notification system, JWT inactivity, portfolio enhancements | Active |
+| `us-markets` | US stocks, bonds, mutual funds | Stale (work continued in manulife-v2) |
+| `search-enhancements` | Search bar with name+ticker matching, top-5 dropdown | Active |
