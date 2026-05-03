@@ -99,16 +99,18 @@ Browser → nginx :80 → /api/* → FastAPI :8000 → PostgreSQL (users, trades
 | `INTRADAY_REFRESH_BATCH_SIZE` | `20`                                                     |
 | `INTRADAY_REFRESH_PAUSE_SECONDS` | `0.5`                                                |
 
-## Branches
+## Branches & Commit History
 
-| Branch                   | Focus                                        |
-|--------------------------|----------------------------------------------|
-| `manulife`               | Core: JWT, trading, watchlist, Docker        |
-| `manulife-v2`            | Notifications, inactivity, portfolio         |
-| `portfolio-enhancements` | Pie charts, date filter, edit trades         |
-| `search-enhancements`    | Search by name + ticker dropdown             |
-| `dashboard-merge`        | Dashboard+Portfolio merge, cumulative returns|
-| `us-markets`             | US stocks, bonds, funds + market toggle      |
+| Branch                   | Commits | Focus                                        |
+|--------------------------|---------|----------------------------------------------|
+| `manulife`               | 19      | Core: JWT, trading, watchlist, Docker        |
+| `manulife-v2`            | 22      | Notifications, inactivity, portfolio         |
+| `portfolio-enhancements` | 27      | Pie charts, date filter, edit trades         |
+| `search-enhancements`    | 23      | Search by name + ticker dropdown             |
+| `dashboard-merge`        | 60      | Dashboard+Portfolio merge, charts, bootstrap |
+| `us-markets`             | 22      | US stocks, bonds, funds + market toggle      |
+
+**Total**: 80+ commits across 6 feature branches
 
 ## License
 
