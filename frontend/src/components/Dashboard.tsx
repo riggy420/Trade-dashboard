@@ -313,19 +313,20 @@ export default function Dashboard() {
     return counts;
   }, [trades, tickers]);
 
-  // Cumulative returns: tracks Total P&L (realized + unrealized) over time
+  // Cumulative returns: tracks Total P&L, final point matches Total P&L card exactly
   const cumulativeReturns = useMemo(() => {
-    if (!trades.length || !holdingsWithPnl.length) return [];
+    if (!trades.length) return [];
     const sorted = [...trades].sort((a, b) => new Date(a.traded_at).getTime() - new Date(b.traded_at).getTime());
     const firstTime = new Date(sorted[0].traded_at).getTime();
     const lastTime = Date.now();
     const spanMs = lastTime - firstTime;
     const intervalMs = spanMs < 3 * 86400000 ? 3600000 : spanMs < 14 * 86400000 ? 14400000 : 86400000;
 
+    // Exact same value as Total P&L card
     const totalUnrealized = holdingsWithPnl.reduce((s, h) => s + (h.pnl ?? 0), 0);
-    const finalTotalPnl = realizedPnl + totalUnrealized;
+    const finalPnl = realizedPnl + totalUnrealized;
+    const finalPct = totalInvested > 0 ? (finalPnl / totalInvested) * 100 : 0;
 
-    // Track realized + cumulative invested through time
     let cumInvested = 0;
     let cumRealized = 0;
     const symPos: Record<string, { qty: number; cost: number }> = {};
@@ -342,13 +343,21 @@ export default function Dashboard() {
         tradeIdx++;
       }
       const progress = totalInvested > 0 ? Math.min(1, cumInvested / totalInvested) : 0;
-      const pct = totalInvested > 0 ? (progress * finalTotalPnl / totalInvested) * 100 : 0;
+      // Interpolate: realized is actual, unrealized scales with capital deployed
+      const pct = totalInvested > 0 ? ((cumRealized + progress * totalUnrealized) / totalInvested) * 100 : 0;
       const d = new Date(ts);
       const label = intervalMs < 86400000
         ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
         : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       data.push({ date: label, pct: Math.round(pct * 100) / 100 });
     }
+
+    // Force final point to exactly match Total P&L card
+    const finalD = new Date(lastTime);
+    data.push({
+      date: intervalMs < 86400000 ? finalD.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : finalD.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      pct: Math.round(finalPct * 100) / 100,
+    });
 
     const step = Math.max(1, Math.floor(data.length / 30));
     return data.filter((_, i) => i % step === 0);
