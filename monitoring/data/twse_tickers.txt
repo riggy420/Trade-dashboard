@@ -1968,3 +1968,93 @@
 9958,世紀鋼,TWSE
 9960,邁達康,TPEx
 9962,有益,TPEx
+00679B,Yuanta US Treasury 20+ Year Bond ETF,TPEx
+00687B,Cathay US Treasury 20+ YR ETF,TPEx
+00694B,Fubon 1-3 Years US Treasury Bond ETF,TPEx
+00695B,Fubon 7-10 Years US Treasury Bond ETF,TPEx
+00696B,Fubon 20+ Years US Treasury Bond ETF,TPEx
+00697B,Yuanta US Treasury 7-10 Year Bond ETF,TPEx
+00719B,Yuanta US Treasury 1-3 Year Bond ETF,TPEx
+00764B,Capital ICE 25+ Year US Treasury ETF,TPEx
+00768B,Fuh Hwa US Treasury 20+ Year ETF,TPEx
+00779B,KGI 25+ Years US Treasury Bond ETF,TPEx
+00795B,CTBC US Treasury 20+ Year Bond ETF,TPEx
+00856B,SinoPac ICE 1-3 Year US Treasury ETF,TPEx
+00857B,SinoPac ICE 20+ Year US Treasury ETF,TPEx
+00859B,Capital ICE 0-1 Year US Treasury ETF,TPEx
+00864B,CTBC 0-1 Year US Treasury Bond ETF,TPEx
+00931B,UPAMC US Treasury 20+ Year ETF,TPEx
+00967B,Yuanta US Treasury 10+ Yr Enhanced Yield ETF,TPEx
+00969B,Yuanta US Strips 25+ Year Select ETF,TPEx
+00720B,Yuanta US 20+ Year BBB Corporate Bond ETF,TPEx
+00725B,Cathay BBB Corporate Bond ex China 10Yr+ ETF,TPEx
+00740B,Fubon 10+ Years US Corporate Bond BBB ETF,TPEx
+00746B,Fubon 9-35 Years US Corporate Bond A ETF,TPEx
+00751B,Yuanta US 20+ Year AAA-A Corporate Bond ETF,TPEx
+00754B,Capital ICE 15+ Year AAA-AA US Corporate ETF,TPEx
+00761B,Cathay US Corp A- Above 10+ Yr ETF,TPEx
+00772B,CTBC USD Corporate 10+ Year High Grade Bond ETF,TPEx
+00777B,KGI 15+ Years AAA-A US Corporate Bond ETF,TPEx
+00789B,Fuh Hwa 20+ Year A3 or Better Corporate Bond ETF,TPEx
+00836B,Sinopac ICE 10+ Year Single-A US Corporate ETF,TPEx
+00840B,KGI 15+ Year US IG Corporate Select Bond ETF,TPEx
+00841B,KGI 20+ Year AAA-AA US Large Cap Corp Bond ETF,TPEx
+00862B,CTBC US 20+ Year BBB Corporate Bond ETF,TPEx
+00883B,CTBC 15+ Developed Mkts US Corp Best-in-Class ESG ETF,TPEx
+00937B,Capital ICE ESG 20+ Year BBB US Corporate ETF,TPEx
+00942B,Taishin US Corporate 20+ Years Single A ETF,TPEx
+00948B,CTBC Enhanced Yield 15+ Year IG US Corp ESG ETF,TPEx
+00950B,KGI Global 10+ Year USD Single A Corporate Bond ETF,TPEx
+00959B,United 15+ Years BBB US Corporate ETF,TPEx
+00966B,UPAMC 15Yr+ USD BBB Senior Corporate Bond ETF,TPEx
+00968B,Yuanta Enhanced Yield 10+ Yr IG US Corp Bond ETF,TPEx
+00970B,Shin Kong 20+ Year BBB USD IG Corporate Bond ETF,TPEx
+00980B,Taishin FTSE WorldBIG BBB USD Corp 10+ Years ETF,TPEx
+00722B,Capital 15+ Year US Telecommunications Bond ETF,TPEx
+00723B,Capital 15+ Year US Technology Bond ETF,TPEx
+00724B,Capital 10+ Year US Banking Bond ETF,TPEx
+00750B,KGI 10+ Year USD Technology Bond ETF,TPEx
+00755B,Capital ICE 15+ Year US Utility ETF,TPEx
+00758B,Fuh Hwa 15+ Year Energy Bond ETF,TPEx
+00759B,Fuh Hwa 15+ Year Pharmaceuticals Bond ETF,TPEx
+00773B,CTBC Banking Senior 10+ Year Bond ETF,TPEx
+00778B,KGI 20+ Years US Banking Bond ETF,TPEx
+00782B,Cathay 15+ Year Utility Bond Select ETF,TPEx
+00785B,Fubon FTSE World IG USD Bank Bond 10+ Years ETF,TPEx
+00786B,Yuanta US 10+ IG Bank Bond ETF,TPEx
+00787B,Yuanta US 10+ IG Healthcare Bond ETF,TPEx
+00788B,Yuanta US 10+ IG Utility Electric Power Bond ETF,TPEx
+00790B,Fuh Hwa 8 Year Financial Subordinate Bond ETF,TPEx
+00793B,Capital ICE 15+ Year AAA-A US Healthcare ETF,TPEx
+00842B,Taishin Bloomberg US Banking Index 15+ Year ETF,TPEx
+00844B,Shin Kong 15 Years USD Banking Bond ETF,TPEx
+00933B,Cathay US Corporate 10+ Years Banking ETF,TPEx
+00710B,Fuh Hwa 1-5 Year High Yield ETF,TWSE
+00711B,Fuh Hwa Emerging Market 10+ Year Bond ETF,TWSE
+00726B,Cathay EM USD IG ex China 5Yr+ ETF,TPEx
+00734B,Taishin JPM EM IG Bond ETF,TPEx
+00749B,KGI 10+ Year EM USD IG Bond ETF,TPEx
+00756B,Capital ICE 15+ Year US EM External Sovereign ETF,TPEx
+00760B,Fuh Hwa Emerging Market Credit Bond ETF,TPEx
+00845B,Fubon Emerging Market USD IG Bond ETF,TPEx
+00848B,CTBC Emerging Asia ex China USD Select Bond ETF,TPEx
+00849B,CTBC 0-5 Year EM USD Government Bond ETF,TPEx
+00870B,Yuanta US 15+ Year EM Sovereign Bond ETF,TPEx
+00727B,Cathay High Yield ex China 1-5 Year ETF,TPEx
+00741B,Fubon 1-5 Years US High Yield Bond ex China ETF,TPEx
+00784B,Fubon FTSE Asian Broad Bond China IG ETF,TPEx
+00847B,CTBC US High Grade Municipal Bond ETF,TPEx
+00860B,Capital ICE 1-5 Year US Corporate ETF,TPEx
+00890B,KGI 15+ Year US BBB ESG Sustainable Corp Bond ETF,TPEx
+TW000T3608Y4,Allianz Global Investors Asian Pacific Dynamic Strategy Fund,TWSE
+TW000T3610Y0,Allianz Global Investors Global Emerging Markets Fund,TWSE
+TW000T3605Y0,Allianz Global Investors Global Biotech Fund,TWSE
+TW000T3619Y1,Allianz Global Investors Taiwan Intelligence Trends Fund,TWSE
+TW000T1004Y8,Fubon Precision Fund,TWSE
+TW000T0502Y2,Yuanta Duo Fu Equity Fund,TWSE
+TW000T0537Y8,Yuanta Asia Pacific Growth Fund,TWSE
+TW000T0557Y6,Yuanta India Fund,TWSE
+TW000T0587Y3,Yuanta/P-shares MSCI Indonesia Index Fund,TWSE
+TW000T0503Y0,Yuanta Duo Duo Equity Fund,TWSE
+TW000T3220Y8,Nomura Global Equity TWD Fund,TWSE
+TW000T4115Y9,KGI ICABR Fund,TWSE

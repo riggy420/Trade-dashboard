@@ -251,13 +251,20 @@ export default function MarketAnalysis() {
   // Auto-refresh: fetch intraday + refresh ticker list, then schedule next
   const doRefresh = async () => {
     try {
-      await refreshAllIntradayData();  // all stocks, no limit
+      await refreshAllIntradayData();
     } catch {}
     try {
       await refreshTickers();
     } catch {}
     fetchTickersData();
   };
+
+  // Immediate refresh when landing on an overview page
+  useEffect(() => {
+    if (isOverview) {
+      doRefresh();
+    }
+  }, [tickerId]);
 
   useEffect(() => {
     if (autoRefresh) {
