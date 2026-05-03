@@ -315,8 +315,8 @@ def get_tickers(_user: dict = Depends(get_current_user)):
             pct = meta.get("changePct", 0)
             change = f"{'+' if pct > 0 else ''}{pct:.2f}%"
         else:
-            suffix = ".TW" if market == "TWSE" else ".TWO" if market == "TPEx" else None
-            suffixes = [suffix] if suffix else [".TW", ".TWO"]
+            suffix = ".TW" if market == "TWSE" else ".TWO" if market == "TPEx" else "" if market == "US" else None
+            suffixes = [suffix] if suffix is not None else [".TW", ".TWO"]
             for candidate_suffix in suffixes:
                 intra_file = os.path.join(DATA_DIR, f"{symbol}{candidate_suffix}_intraday.txt")
                 if os.path.exists(intra_file):
@@ -460,8 +460,8 @@ def get_sectors_overview(_user: dict = Depends(get_current_user)):
                 change = None
                 
                 # Try to get latest price and change from intraday data
-                suffix = ".TW" if market == "TWSE" else ".TWO" if market == "TPEx" else None
-                suffixes = [suffix] if suffix else [".TW", ".TWO"]
+                market_suffix = ".TW" if market == "TWSE" else ".TWO" if market == "TPEx" else "" if market == "US" else None
+                suffixes = [market_suffix] if market_suffix is not None else [".TW", ".TWO"]
 
                 for suffix in suffixes:
                     intra_file = os.path.join(DATA_DIR, f"{symbol}{suffix}_intraday.txt")

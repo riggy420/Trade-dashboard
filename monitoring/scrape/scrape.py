@@ -65,7 +65,105 @@ def _sync_intraday_to_redis(symbol: str, df: pd.DataFrame) -> None:
 MARKET_SUFFIXES = {
     "TWSE": ".TW",
     "TPEx": ".TWO",
+    "US": "",   # US stocks use plain tickers, no suffix
 }
+
+US_TICKERS = [
+    # S&P 500 / Major US Stocks
+    ("AAPL", "Apple Inc.", "US"),
+    ("MSFT", "Microsoft Corporation", "US"),
+    ("GOOGL", "Alphabet Inc.", "US"),
+    ("AMZN", "Amazon.com Inc.", "US"),
+    ("NVDA", "NVIDIA Corporation", "US"),
+    ("META", "Meta Platforms Inc.", "US"),
+    ("TSLA", "Tesla Inc.", "US"),
+    ("BRK-B", "Berkshire Hathaway Inc.", "US"),
+    ("JPM", "JPMorgan Chase & Co.", "US"),
+    ("V", "Visa Inc.", "US"),
+    ("JNJ", "Johnson & Johnson", "US"),
+    ("WMT", "Walmart Inc.", "US"),
+    ("PG", "Procter & Gamble Co.", "US"),
+    ("MA", "Mastercard Inc.", "US"),
+    ("UNH", "UnitedHealth Group Inc.", "US"),
+    ("HD", "Home Depot Inc.", "US"),
+    ("BAC", "Bank of America Corp.", "US"),
+    ("XOM", "Exxon Mobil Corp.", "US"),
+    ("DIS", "Walt Disney Co.", "US"),
+    ("NFLX", "Netflix Inc.", "US"),
+    ("ADBE", "Adobe Inc.", "US"),
+    ("CRM", "Salesforce Inc.", "US"),
+    ("CSCO", "Cisco Systems Inc.", "US"),
+    ("INTC", "Intel Corp.", "US"),
+    ("VZ", "Verizon Communications Inc.", "US"),
+    ("PFE", "Pfizer Inc.", "US"),
+    ("KO", "Coca-Cola Co.", "US"),
+    ("PEP", "PepsiCo Inc.", "US"),
+    ("TMO", "Thermo Fisher Scientific Inc.", "US"),
+    ("ABT", "Abbott Laboratories", "US"),
+    ("CMCSA", "Comcast Corp.", "US"),
+    ("NKE", "Nike Inc.", "US"),
+    ("MRK", "Merck & Co. Inc.", "US"),
+    ("WFC", "Wells Fargo & Co.", "US"),
+    ("ABBV", "AbbVie Inc.", "US"),
+    ("ORCL", "Oracle Corp.", "US"),
+    ("ACN", "Accenture PLC", "US"),
+    ("COST", "Costco Wholesale Corp.", "US"),
+    ("CVX", "Chevron Corp.", "US"),
+    ("MCD", "McDonald's Corp.", "US"),
+    ("AMD", "Advanced Micro Devices Inc.", "US"),
+    ("NOW", "ServiceNow Inc.", "US"),
+    ("IBM", "International Business Machines", "US"),
+    ("CAT", "Caterpillar Inc.", "US"),
+    ("GS", "Goldman Sachs Group Inc.", "US"),
+    ("BA", "Boeing Co.", "US"),
+    ("GE", "General Electric Co.", "US"),
+    ("PLTR", "Palantir Technologies Inc.", "US"),
+    ("UBER", "Uber Technologies Inc.", "US"),
+    ("SQ", "Block Inc.", "US"),
+    ("COIN", "Coinbase Global Inc.", "US"),
+    # US Bond ETFs
+    ("TLT", "iShares 20+ Year Treasury Bond ETF", "US"),
+    ("IEF", "iShares 7-10 Year Treasury Bond ETF", "US"),
+    ("SHY", "iShares 1-3 Year Treasury Bond ETF", "US"),
+    ("LQD", "iShares Investment Grade Corporate Bond ETF", "US"),
+    ("HYG", "iShares High Yield Corporate Bond ETF", "US"),
+    ("AGG", "iShares Core US Aggregate Bond ETF", "US"),
+    ("BND", "Vanguard Total Bond Market ETF", "US"),
+    ("TIP", "iShares TIPS Bond ETF", "US"),
+    ("MUB", "iShares National Muni Bond ETF", "US"),
+    ("BIL", "SPDR Bloomberg 1-3 Month T-Bill ETF", "US"),
+    ("SGOV", "iShares 0-3 Month Treasury Bond ETF", "US"),
+    ("VCIT", "Vanguard Intermediate-Term Corp Bond ETF", "US"),
+    ("VGLT", "Vanguard Long-Term Treasury ETF", "US"),
+    ("EMB", "iShares JP Morgan USD EM Bond ETF", "US"),
+    ("MBB", "iShares MBS ETF", "US"),
+    ("JNK", "SPDR Bloomberg High Yield Bond ETF", "US"),
+    # US Index / Sector ETFs + Mutual Funds
+    ("SPY", "SPDR S&P 500 ETF Trust", "US"),
+    ("VOO", "Vanguard S&P 500 ETF", "US"),
+    ("IVV", "iShares Core S&P 500 ETF", "US"),
+    ("QQQ", "Invesco QQQ Trust", "US"),
+    ("VTI", "Vanguard Total Stock Market ETF", "US"),
+    ("VT", "Vanguard Total World Stock ETF", "US"),
+    ("VEA", "Vanguard FTSE Developed Markets ETF", "US"),
+    ("VWO", "Vanguard FTSE Emerging Markets ETF", "US"),
+    ("VIG", "Vanguard Dividend Appreciation ETF", "US"),
+    ("VYM", "Vanguard High Dividend Yield ETF", "US"),
+    ("SCHD", "Schwab US Dividend Equity ETF", "US"),
+    ("DIA", "SPDR Dow Jones Industrial Avg ETF", "US"),
+    ("IWM", "iShares Russell 2000 ETF", "US"),
+    ("ARKK", "ARK Innovation ETF", "US"),
+    ("XLF", "Financial Select Sector SPDR Fund", "US"),
+    ("XLE", "Energy Select Sector SPDR Fund", "US"),
+    ("XLK", "Technology Select Sector SPDR Fund", "US"),
+    ("XLV", "Health Care Select Sector SPDR Fund", "US"),
+    ("GLD", "SPDR Gold Trust", "US"),
+    ("SLV", "iShares Silver Trust", "US"),
+    ("SMH", "VanEck Semiconductor ETF", "US"),
+    ("SOXX", "iShares Semiconductor ETF", "US"),
+    ("IBB", "iShares Biotechnology ETF", "US"),
+    ("XBI", "SPDR S&P Biotech ETF", "US"),
+]
 
 MUTUAL_FUND_ISINS = [
     # Taiwan mutual funds available on Yahoo Finance (ISIN-based .TW tickers)
@@ -221,12 +319,16 @@ def fetch_twse_tickers() -> list:
     for fund_isin, fund_name, fund_market in MUTUAL_FUND_ISINS:
         tickers.append((fund_isin, fund_name, fund_market))
 
+    # Append US market tickers
+    for us in US_TICKERS:
+        tickers.append(us)
+
     # Save the list to a text file for reference
     list_path = os.path.join(DATA_DIR, "twse_tickers.txt")
     with open(list_path, "w", encoding="utf-8") as f:
         f.write("\n".join(f"{symbol},{name},{market}" for symbol, name, market in tickers))
 
-    print(f"Successfully scraped {len(tickers)} Taiwanese tickers (incl. bonds + funds).")
+    print(f"Successfully scraped {len(tickers)} tickers (TW + bonds + funds + US).")
     return tickers
 
 

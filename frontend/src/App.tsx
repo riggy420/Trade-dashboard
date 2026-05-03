@@ -70,6 +70,18 @@ function AppShell() {
           <Link to="/analysis/funds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📊</span> Mutual Funds</span>
           </Link>
+          <div className="py-1 px-6 mt-2">
+            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">US Markets</p>
+          </div>
+          <Link to="/analysis/us-stocks" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
+            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">🇺🇸</span> US Stocks</span>
+          </Link>
+          <Link to="/analysis/us-bonds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
+            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">💵</span> US Bonds</span>
+          </Link>
+          <Link to="/analysis/us-funds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
+            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">🏦</span> US ETFs & Funds</span>
+          </Link>
           <Link to="/watchlist" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">★</span> Watchlist</span>
           </Link>

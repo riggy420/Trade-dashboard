@@ -45,7 +45,10 @@ export default function MarketAnalysis() {
   const isAllStocks = tickerId === 'all';
   const isBonds = tickerId === 'bonds';
   const isFunds = tickerId === 'funds';
-  const isOverview = isAllStocks || isBonds || isFunds;
+  const isUSStocks = tickerId === 'us-stocks';
+  const isUSBonds = tickerId === 'us-bonds';
+  const isUSFunds = tickerId === 'us-funds';
+  const isOverview = isAllStocks || isBonds || isFunds || isUSStocks || isUSBonds || isUSFunds;
   const activeTicker = isOverview ? '2330' : (tickerId || '2330');
   const searchParams = new URLSearchParams(location.search);
   const indicatorSearch = (searchParams.get('indicator') || '').toLowerCase();
@@ -373,6 +376,22 @@ export default function MarketAnalysis() {
     t.symbol.startsWith('TW000T')
   );
 
+  // US market filters (market === 'US')
+  const usTickers = tickers.filter((t) => t.market === 'US');
+  const usStockTickers = usTickers.filter((t) =>
+    !t.name.toLowerCase().includes('bond') && !t.name.toLowerCase().includes('treasury') &&
+    !t.name.toLowerCase().includes('etf') && !t.name.toLowerCase().includes('trust') &&
+    !/ETF|Trust|Fund/i.test(t.name)
+  );
+  const usBondTickers = usTickers.filter((t) =>
+    t.name.toLowerCase().includes('bond') || t.name.toLowerCase().includes('treasury') ||
+    t.name.toLowerCase().includes('tips') || t.name.toLowerCase().includes('muni') ||
+    t.name.toLowerCase().includes('high yield') || t.name.toLowerCase().includes('mbs')
+  );
+  const usFundTickers = usTickers.filter((t) =>
+    !usStockTickers.includes(t) && !usBondTickers.includes(t)
+  );
+
   const renderBoard = (title: string, data: any[], showRefresh = true) => (
     <div className="border border-gray-200 rounded shadow-sm bg-white p-4">
       <div className="flex justify-between items-center mb-4">
@@ -444,18 +463,20 @@ export default function MarketAnalysis() {
 
   // Overview pages — show filtered board without chart
   if (isOverview) {
-    const title = isBonds ? 'Taiwan Bond ETFs' : isFunds ? 'Taiwan Mutual Funds' : 'Taiwan Board';
-    const desc = isBonds ? 'Exchange-traded bond funds listed on TWSE/TPEx' :
-                 isFunds ? 'Mutual funds available on Yahoo Finance' :
-                 'All listed Taiwanese stocks with live prices';
-    const data = isBonds ? bondTickers : isFunds ? fundTickers : filteredTickers;
+    let title = 'Taiwan Board'; let desc = 'All listed Taiwanese stocks with live prices';
+    let data = filteredTickers; let showRefresh = true;
+    if (isBonds) { title = 'Taiwan Bond ETFs'; desc = 'Exchange-traded bond funds on TWSE/TPEx'; data = bondTickers; showRefresh = false; }
+    else if (isFunds) { title = 'Taiwan Mutual Funds'; desc = 'Mutual funds available on Yahoo Finance'; data = fundTickers; showRefresh = false; }
+    else if (isUSStocks) { title = 'US Stocks'; desc = 'S&P 500 and major US equities'; data = usStockTickers; showRefresh = false; }
+    else if (isUSBonds) { title = 'US Bond ETFs'; desc = 'Treasury, corporate, municipal bond ETFs'; data = usBondTickers; showRefresh = false; }
+    else if (isUSFunds) { title = 'US ETFs & Funds'; desc = 'Index, sector, and thematic ETFs'; data = usFundTickers; showRefresh = false; }
     return (
       <div className="p-8 text-gray-800">
         <div className="mb-6">
           <h2 className="text-xl font-bold text-gray-900">{title}</h2>
           <p className="text-sm text-gray-500 mt-1">{desc}</p>
         </div>
-        {renderBoard(title, data, !isBonds && !isFunds)}
+        {renderBoard(title, data, showRefresh)}
       </div>
     );
   }
