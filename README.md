@@ -1,17 +1,6 @@
 # Portfolio Management Dashboard — EquitiTrack
 
-Built for the **Technology Industrial Placement Program 2026** assessment. A full-stack portfolio dashboard with 50 Taiwan stocks, 78 bond ETFs, and 12 mutual funds — real-time yfinance pricing, Market/Limit orders with Redis-backed pending queue, portfolio analytics with pie charts and cumulative returns, JWT authentication with inactivity timeout, and full Docker deployment.
-
-## Assessment Requirements — All Met (60/60)
-
-| #   | Requirement          | Implementation                                                                                                                                               |
-|-----|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1   | JWT Authentication   | Register/Login/Logout, access+refresh tokens (HS256), silent axios refresh, 30-min inactivity auto-logout, nginx auth forwarding, login pre-caching          |
-| 2   | Portfolio Overview   | 5 summary cards (value, total P&L, realized, unrealized, holdings), stocks/bonds/funds boards, 4 Recharts charts, per-holding P&L %, fundamentals (P/E, EPS) |
-| 3   | Transaction History  | Order History table with date filter + edit/delete, Open Positions table with per-stock unrealized P&L, Pending Orders tab                                   |
-| 4   | Add/Edit Investments | Market/Limit orders (two-step), pending queue with auto-execution, inline edit + cancel, EditTradeModal for completed trades, sell validation               |
-| 5   | Technology Stack     | React 19 + TypeScript + Tailwind, FastAPI + asyncpg, PostgreSQL 16 + Redis 7, 40+ Git commits across 6 branches                                              |
-| 6   | Docker Deliverable   | `docker compose up --build` — 4 services (db, redis, backend, frontend), healthchecks, auto-bootstrap data, mounted volumes                                 |
+ A full-stack portfolio dashboard with 50 Taiwan stocks, 78 bond ETFs, and 12 mutual funds — real-time yfinance pricing, Market/Limit orders with Redis-backed pending queue, portfolio analytics with pie charts and cumulative returns, JWT authentication with inactivity timeout, and full Docker deployment.
 
 ## Quick Start
 
@@ -111,7 +100,3 @@ Browser → nginx :80 → /api/* → FastAPI :8000 → PostgreSQL (users, trades
 | `us-markets`             | 22      | US stocks, bonds, funds + market toggle      |
 
 **Total**: 80+ commits across 6 feature branches
-
-## License
-
-Confidential — Technology Industrial Placement Program 2026 assessment.
