@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, fetchSupervisionScan, getTickers, fetchHoldings, fetchSymbolHistory } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { useNotifications } from '../context/NotificationContext';
+
+const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16', '#f97316'];
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
@@ -210,6 +213,39 @@ export default function Dashboard() {
   const fmtNT = (n: number) =>
     `NT$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  // Asset allocation pie data
+  const assetPieData = useMemo(() => {
+    const groups: Record<string, number> = {};
+    for (const h of holdingsWithPnl) {
+      const val = h.marketValue ?? h.costBasis;
+      const sym = h.symbol;
+      const cat = /^\d{4,6}B/.test(sym) ? 'Bonds' : sym.startsWith('TW000T') ? 'Mutual Funds' : 'Stocks';
+      groups[cat] = (groups[cat] || 0) + val;
+    }
+    return Object.entries(groups).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));
+  }, [holdingsWithPnl]);
+
+  // Industry breakdown pie data (stocks only)
+  const industryPieData = useMemo(() => {
+    const groups: Record<string, number> = {};
+    for (const h of holdingsWithPnl) {
+      const sym = h.symbol;
+      if (/^\d{4,6}B/.test(sym) || sym.startsWith('TW000T')) continue; // skip bonds & funds
+      const ticker = tickers.find((t) => t.symbol === sym);
+      const industry = ticker?.industry || 'Unknown';
+      const val = h.marketValue ?? h.costBasis;
+      groups[industry] = (groups[industry] || 0) + val;
+    }
+    // Sort by value desc, take top 7, group rest as "Other"
+    const sorted = Object.entries(groups).sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 7).map(([n, v]) => ({ name: n, value: Math.round(v * 100) / 100 }));
+    if (sorted.length > 7) {
+      const rest = sorted.slice(7).reduce((s, [, v]) => s + v, 0);
+      top.push({ name: 'Other', value: Math.round(rest * 100) / 100 });
+    }
+    return top;
+  }, [holdingsWithPnl, tickers]);
+
   const watchlistMovers = watchlistItems
     .filter((w) => w.item_type === 'stock')
     .map((w) => {
@@ -314,21 +350,82 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-red-600 font-bold text-lg">Regulatory Alert List</h2>
+      {/* Portfolio Charts */}
+      {holdingsWithPnl.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Asset Allocation */}
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-700 mb-3">Asset Allocation</h3>
+            {assetPieData.length > 0 ? (
+              <div className="flex items-center">
+                <ResponsiveContainer width="55%" height={160}>
+                  <PieChart>
+                    <Pie data={assetPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={2} dataKey="value">
+                      {assetPieData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i]} />))}
+                    </Pie>
+                    <Tooltip formatter={(v: any) => [fmtNT(Number(v) || 0), 'Value']} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-col gap-2 text-xs ml-2">
+                  {assetPieData.map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i] }} />
+                      <span className="text-gray-600">{d.name}</span>
+                      <span className="text-gray-400 ml-auto">{fmtNT(d.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">No portfolio data yet.</p>
+            )}
+          </div>
+
+          {/* Industry Breakdown (stocks only) */}
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-700 mb-3">Industry Breakdown</h3>
+            {industryPieData.length > 0 ? (
+              <div className="flex items-center">
+                <ResponsiveContainer width="55%" height={160}>
+                  <PieChart>
+                    <Pie data={industryPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={2} dataKey="value">
+                      {industryPieData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+                    </Pie>
+                    <Tooltip formatter={(v: any) => [fmtNT(Number(v) || 0), 'Value']} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-col gap-1.5 text-xs ml-2 max-h-[160px] overflow-y-auto">
+                  {industryPieData.map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-gray-600 truncate max-w-[100px]">{d.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">No stock holdings yet.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Regulatory Alert List — collapsed below charts */}
+      <details className="mb-8">
+        <summary className="cursor-pointer flex items-center justify-between bg-white border border-gray-200 rounded px-4 py-2 shadow-sm">
+          <h2 className="text-red-600 font-bold text-lg inline">Regulatory Alert List</h2>
           {!supervisionLoading && supervisionAlerts.length > 0 && (
-            <span className="text-xs text-gray-500">
-              {supervisionAlerts.filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH').length} flagged stocks
+            <span className="text-xs text-gray-500 ml-4">
+              {supervisionAlerts.filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH').length} flagged
             </span>
           )}
-        </div>
+        </summary>
         {supervisionLoading ? (
-          <p className="text-sm text-gray-400 italic">Scanning stocks for regulatory signals...</p>
+          <p className="text-sm text-gray-400 italic mt-3">Scanning stocks for regulatory signals...</p>
         ) : supervisionAlerts.length === 0 ? (
-          <p className="text-sm text-gray-500">No supervision data available. Ensure historical data is loaded.</p>
+          <p className="text-sm text-gray-500 mt-3">No supervision data available.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
             {supervisionAlerts
               .filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH')
               .slice(0, 6)
@@ -372,7 +469,7 @@ export default function Dashboard() {
             )}
           </div>
         )}
-      </div>
+      </details>
 
       {/* Taiwan Indices Overview */}
       <div className="mb-8">
