@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchTrades, fetchPendingOrders, cancelPendingOrder } from '../api/endpoints';
+import { fetchTrades, fetchPendingOrders, cancelPendingOrder, updatePendingOrder } from '../api/endpoints';
 
 interface Trade {
   id: number;
@@ -24,6 +24,9 @@ export default function ReportsPage() {
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'history' | 'pending'>('history');
+  const [editingPending, setEditingPending] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editVolume, setEditVolume] = useState('');
   const navigate = useNavigate();
 
   const loadData = () => {
@@ -42,6 +45,25 @@ export default function ReportsPage() {
     try {
       await cancelPendingOrder(orderId);
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch {}
+  };
+
+  const startEdit = (o: any) => {
+    setEditingPending(o.id);
+    setEditPrice(String(o.limit_price));
+    setEditVolume(String(o.volume));
+  };
+
+  const saveEdit = async (orderId: string) => {
+    try {
+      await updatePendingOrder(orderId, {
+        limit_price: parseFloat(editPrice) || 0,
+        volume: parseInt(editVolume) || 0,
+      });
+      setPendingOrders((prev) => prev.map((o) =>
+        o.id === orderId ? { ...o, limit_price: parseFloat(editPrice), volume: parseInt(editVolume) } : o
+      ));
+      setEditingPending(null);
     } catch {}
   };
 
@@ -185,11 +207,40 @@ export default function ReportsPage() {
                         {o.side}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-right font-semibold">{fmt(Number(o.limit_price))}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">{o.volume}</td>
-                    <td className="px-4 py-2 text-center">
-                      <button onClick={() => handleCancel(o.id)}
-                        className="text-xs text-red-600 hover:text-red-800 underline">Cancel</button>
+                    <td className="px-4 py-2 text-right">
+                      {editingPending === o.id ? (
+                        <input type="number" step="0.01" value={editPrice}
+                          onChange={(e) => setEditPrice(e.target.value)}
+                          className="w-24 px-1 py-0.5 border border-blue-300 rounded text-xs text-right" />
+                      ) : (
+                        <span className="font-semibold">{fmt(Number(o.limit_price))}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {editingPending === o.id ? (
+                        <input type="number" value={editVolume}
+                          onChange={(e) => setEditVolume(e.target.value)}
+                          className="w-20 px-1 py-0.5 border border-blue-300 rounded text-xs text-right" />
+                      ) : (
+                        <span className="text-gray-700">{o.volume}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-center space-x-1">
+                      {editingPending === o.id ? (
+                        <>
+                          <button onClick={() => saveEdit(o.id)}
+                            className="text-xs text-green-600 hover:text-green-800 underline">Save</button>
+                          <button onClick={() => setEditingPending(null)}
+                            className="text-xs text-gray-500 hover:text-gray-700 underline">Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => startEdit(o)}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline mr-1">Edit</button>
+                          <button onClick={() => handleCancel(o.id)}
+                            className="text-xs text-red-500 hover:text-red-700 underline">Cancel</button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}

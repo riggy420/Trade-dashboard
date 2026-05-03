@@ -165,6 +165,11 @@ export const cancelPendingOrder = async (orderId: string) => {
   await api.delete(`/trades/pending/${encodeURIComponent(orderId)}`);
 };
 
+export const updatePendingOrder = async (orderId: string, data: { limit_price?: number; volume?: number }) => {
+  const response = await api.put(`/trades/pending/${encodeURIComponent(orderId)}`, data);
+  return response.data;
+};
+
 export const updateTrade = async (tradeId: number, data: Record<string, unknown>) => {
   const response = await api.put(`/trades/${tradeId}`, data);
   return response.data;

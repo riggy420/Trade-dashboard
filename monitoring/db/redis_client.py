@@ -128,3 +128,12 @@ async def remove_pending_order(order_id: str) -> None:
 async def get_user_pending_orders(user_id: int) -> list[dict]:
     all_orders = await get_all_pending_orders()
     return [o for o in all_orders if o.get("user_id") == user_id]
+
+
+async def update_pending_order(order_id: str, updates: dict) -> dict | None:
+    order = await get_pending_order(order_id)
+    if order is None:
+        return None
+    order.update(updates)
+    await save_pending_order(order_id, order)
+    return order

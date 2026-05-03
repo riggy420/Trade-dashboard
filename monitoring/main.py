@@ -15,7 +15,7 @@ from db.database import (
 from db.redis_client import (
     get_meta, get_all_meta,
     save_pending_order, get_user_pending_orders, remove_pending_order,
-    get_all_pending_orders,
+    get_all_pending_orders, update_pending_order,
 )
 from auth import (
     verify_password, create_access_token, create_refresh_token,
@@ -850,6 +850,20 @@ async def cancel_pending(order_id: str, current_user: dict = Depends(get_current
         raise HTTPException(status_code=404, detail="Pending order not found")
     await remove_pending_order(order_id)
     return None
+
+
+@app.put("/api/trades/pending/{order_id}")
+async def edit_pending(order_id: str, body: dict, current_user: dict = Depends(get_current_user)):
+    order = await get_user_pending_orders(current_user["id"])
+    match = next((o for o in order if o["id"] == order_id), None)
+    if match is None:
+        raise HTTPException(status_code=404, detail="Pending order not found")
+    allowed = {"limit_price", "volume"}
+    updates = {k: v for k, v in body.items() if k in allowed and v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid fields to update (limit_price, volume)")
+    updated = await update_pending_order(order_id, updates)
+    return updated
 
 
 @app.put("/api/trades/{trade_id}")
