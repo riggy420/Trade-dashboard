@@ -330,13 +330,17 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-col gap-2 text-xs ml-2">
-                  {assetPieData.map((d, i) => (
+                  {assetPieData.map((d, i) => {
+                    const total = assetPieData.reduce((s, x) => s + x.value, 0);
+                    const pct = total > 0 ? ((d.value / total) * 100).toFixed(0) : 0;
+                    return (
                     <div key={d.name} className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i] }} />
                       <span className="text-gray-600">{d.name}</span>
-                      <span className="text-gray-400 ml-auto">{fmtNT(d.value)}</span>
+                      <span className="text-gray-400 ml-auto">{pct}%</span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -358,13 +362,17 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-col gap-1.5 text-xs ml-2 max-h-[160px] overflow-y-auto">
-                  {industryPieData.map((d, i) => (
+                  {industryPieData.map((d, i) => {
+                    const total = industryPieData.reduce((s, x) => s + x.value, 0);
+                    const pct = total > 0 ? ((d.value / total) * 100).toFixed(0) : 0;
+                    return (
                     <div key={d.name} className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className="text-gray-600 truncate max-w-[140px]" title={d.name}>{d.name}</span>
-                      <span className="text-gray-400 ml-auto text-[10px]">{((d.value / (assetPieData[0]?.value || 1)) * 100).toFixed(0)}%</span>
+                      <span className="text-gray-600 truncate max-w-[100px]" title={d.name}>{d.name}</span>
+                      <span className="text-gray-400 ml-auto text-[10px]">{pct}%</span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
