@@ -643,12 +643,6 @@ export default function MarketAnalysis() {
          />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-gray-100 p-4 rounded h-32">News 1</div>
-        <div className="bg-gray-100 p-4 rounded h-32">News 2</div>
-        <div className="bg-gray-100 p-4 rounded h-32">News 3</div>
-      </div>
-
       {/* Same-industry stocks */}
       {renderBoard(
         currentIndustry ? `${currentIndustry} Stocks` : 'Related Stocks',
