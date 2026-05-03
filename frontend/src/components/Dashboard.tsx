@@ -358,10 +358,10 @@ export default function Dashboard() {
             <p className="text-[10px] uppercase text-gray-500 font-semibold tracking-wide">Portfolio Value</p>
             <p className="text-lg font-black text-gray-900 mt-1">{fmtNT(portfolioSummary.totalValue)}</p>
           </div>
-          <div className={`rounded-lg p-3 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : portfolioSummary.totalPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <div className={`rounded-lg p-3 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
             <p className="text-[10px] uppercase font-semibold tracking-wide text-gray-600">Total P&amp;L</p>
-            <p className={`text-lg font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.totalPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-              {portfolioSummary.totalPnl >= 0 ? '+' : ''}{fmtNT(portfolioSummary.totalPnl)}
+            <p className={`text-lg font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              {(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? '+' : ''}{fmtNT(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost)}
             </p>
             <p className={`text-[10px] font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               ({portfolioSummary.pnlPct >= 0 ? '+' : ''}{portfolioSummary.pnlPct.toFixed(2)}%)
