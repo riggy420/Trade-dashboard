@@ -136,7 +136,7 @@ export default function ReportsPage() {
     if (!window.confirm('Delete this trade? This cannot be undone.')) return;
     try {
       await deleteTrade(tradeId);
-      setTrades((prev) => prev.filter((t) => t.id !== tradeId));
+      loadData(); // refresh everything including holdings
     } catch {}
   };
 
