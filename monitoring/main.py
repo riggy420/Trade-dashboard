@@ -510,9 +510,9 @@ def get_sectors_overview(_user: dict = Depends(get_current_user)):
             for t in sector_tickers:
                 perf = ticker_performance.get(t, {})
                 if perf.get("change") == max_change and not top_performer:
-                    top_performer = {"symbol": t, "name": perf.get("name", "Unknown"), "change": max_change}
+                    top_performer = {"symbol": t, "name": perf.get("name", "Unknown"), "change": round(max_change, 2)}
                 if perf.get("change") == min_change and not worst_performer:
-                    worst_performer = {"symbol": t, "name": perf.get("name", "Unknown"), "change": min_change}
+                    worst_performer = {"symbol": t, "name": perf.get("name", "Unknown"), "change": round(min_change, 2)}
         
         sectors_overview.append({
             "sector": sector_name,
