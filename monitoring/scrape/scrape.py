@@ -497,9 +497,26 @@ def fetch_intraday(ticker: str, market: str | None = None) -> str:
     base_ticker = ticker
     if base_ticker.endswith(".TW") or base_ticker.endswith(".TWO"):
         base_ticker = base_ticker.split(".")[0]
-        
+
+    # Skip if Redis has fresh data (< 1 hour old)
+    try:
+        from redis import Redis as SyncRedis
+        r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True, socket_connect_timeout=1)
+        if r.ping():
+            raw = r.get(f"intraday:meta:{base_ticker}")
+            if raw:
+                meta = json.loads(raw)
+                last_upd = meta.get("lastUpdated", "")
+                if last_upd:
+                    age = (datetime.now() - datetime.fromisoformat(last_upd)).total_seconds()
+                    if age < 3600:
+                        print(f"↻ {base_ticker}: fresh ({age/60:.0f}m ago), skipping")
+                        return "cached"
+    except Exception:
+        pass
+
     print(f"Fetching hourly intraday data for {base_ticker}...")
-    
+
     suffix = _resolve_market_suffix(base_ticker, market)
     if suffix is None:
         raise ValueError(f"No market code found for {base_ticker}. Refresh the ticker list first.")
@@ -531,7 +548,7 @@ def fetch_intraday(ticker: str, market: str | None = None) -> str:
         except Exception as e:
             print(f"Incremental intraday update failed for {used_ticker}, rescraping full file: {e}")
 
-    df = tkr.history(period="1mo", interval="1h").round(2)
+    df = tkr.history(period="5d", interval="1h").round(2)
     if df.empty:
         raise ValueError(f"No intraday data found for {base_ticker} on market {suffix}")
 
