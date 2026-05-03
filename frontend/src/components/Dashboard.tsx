@@ -211,23 +211,24 @@ export default function Dashboard() {
   }, [holdingsWithPnl]);
 
   // Realized P&L from completed sell trades
-  const realizedPnl = useMemo(() => {
-    if (!trades.length || !tickers.length) return 0;
+  const { realizedPnl, totalInvested } = useMemo(() => {
+    if (!trades.length) return { realizedPnl: 0, totalInvested: 0 };
     let rp = 0;
+    let invested = 0;
     const posMap: Record<string, { qty: number; cost: number }> = {};
     const sorted = [...trades].sort((a, b) => new Date(a.traded_at).getTime() - new Date(b.traded_at).getTime());
     for (const t of sorted) {
       if (!posMap[t.symbol]) posMap[t.symbol] = { qty: 0, cost: 0 };
       const p = posMap[t.symbol];
-      if (t.side === 'BUY') { p.qty += t.volume; p.cost += Number(t.total_value); }
+      if (t.side === 'BUY') { p.qty += t.volume; p.cost += Number(t.total_value); invested += Number(t.total_value); }
       else {
         const avg = p.qty > 0 ? p.cost / p.qty : 0;
         rp += Number(t.total_value) - (avg * t.volume);
         p.qty -= t.volume; p.cost -= avg * t.volume;
       }
     }
-    return rp;
-  }, [trades, tickers]);
+    return { realizedPnl: rp, totalInvested: invested };
+  }, [trades]);
 
   const fmtNT = (n: number) =>
     `NT$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -363,8 +364,8 @@ export default function Dashboard() {
             <p className={`text-lg font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
               {(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? '+' : ''}{fmtNT(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost)}
             </p>
-            <p className={`text-[10px] font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ({portfolioSummary.pnlPct >= 0 ? '+' : ''}{portfolioSummary.pnlPct.toFixed(2)}%)
+            <p className={`text-[10px] font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {totalInvested > 0 ? `(${(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? '+' : ''}${(((realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) / totalInvested) * 100).toFixed(2)}%)` : '(—)'}
             </p>
           </div>
           <div className={`rounded-lg p-3 shadow-sm border ${realizedPnl >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
@@ -373,7 +374,7 @@ export default function Dashboard() {
               {realizedPnl >= 0 ? '+' : ''}{fmtNT(realizedPnl)}
             </p>
             <p className={`text-[10px] font-bold mt-0.5 ${realizedPnl >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
-              {portfolioSummary.totalCost > 0 ? `${realizedPnl >= 0 ? '+' : ''}${((realizedPnl / portfolioSummary.totalCost) * 100).toFixed(2)}%` : '—'}
+              {totalInvested > 0 ? `${realizedPnl >= 0 ? '+' : ''}${((realizedPnl / totalInvested) * 100).toFixed(2)}%` : '—'}
             </p>
           </div>
           <div className={`rounded-lg p-3 shadow-sm border ${(portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-purple-50 border-purple-200' : 'bg-pink-50 border-pink-200'}`}>
