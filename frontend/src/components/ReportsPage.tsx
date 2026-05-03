@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchTrades, fetchPendingOrders, cancelPendingOrder, deleteTrade } from '../api/endpoints';
-import EditTradeModal from './EditTradeModal';
+import { useNavigate } from 'react-router-dom';
+import { fetchTrades, fetchPendingOrders, cancelPendingOrder } from '../api/endpoints';
 
 interface Trade {
   id: number;
@@ -22,9 +22,9 @@ const fmt = (n: number) =>
 export default function ReportsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
-  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'history' | 'pending'>('history');
+  const navigate = useNavigate();
 
   const loadData = () => {
     fetchTrades()
@@ -42,14 +42,6 @@ export default function ReportsPage() {
     try {
       await cancelPendingOrder(orderId);
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
-    } catch {}
-  };
-
-  const handleDelete = async (tradeId: number) => {
-    if (!window.confirm('Delete this trade? This cannot be undone.')) return;
-    try {
-      await deleteTrade(tradeId);
-      setTrades((prev) => prev.filter((t) => t.id !== tradeId));
     } catch {}
   };
 
@@ -124,7 +116,8 @@ export default function ReportsPage() {
               </thead>
               <tbody>
                 {openPositions.map((p) => (
-                  <tr key={p.symbol} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                  <tr key={p.symbol} onClick={() => navigate(`/analysis/${p.symbol}`)}
+                    className="border-b border-gray-100 hover:bg-blue-50 transition cursor-pointer">
                     <td className="px-4 py-2 font-bold text-blue-600">{p.symbol}</td>
                     <td className="px-4 py-2 text-gray-700 truncate max-w-[200px]">{p.name || '—'}</td>
                     <td className="px-4 py-2 text-right font-semibold">{p.net}</td>
@@ -225,7 +218,6 @@ export default function ReportsPage() {
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Limit</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Volume</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Total Value</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -252,12 +244,6 @@ export default function ReportsPage() {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-700">{t.volume}</td>
                   <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(Number(t.total_value))}</td>
-                  <td className="px-4 py-3 text-center">
-                    <button onClick={(e) => { e.stopPropagation(); setEditingTrade(t); }}
-                      className="text-xs text-blue-600 hover:text-blue-800 mr-2">Edit</button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
-                      className="text-xs text-red-500 hover:text-red-700">Delete</button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -265,13 +251,6 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {editingTrade && (
-        <EditTradeModal
-          trade={editingTrade}
-          onClose={() => setEditingTrade(null)}
-          onSuccess={() => { setEditingTrade(null); loadData(); }}
-        />
-      )}
     </div>
   );
 }
