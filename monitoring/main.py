@@ -109,7 +109,7 @@ async def _refresh_intraday_if_stale() -> bool:
     return False
 
 
-async def _run_intraday_refresh(limit: int | None = None):
+async def _run_intraday_refresh(limit: int | None = None, force: bool = False):
     if not hasattr(app.state, "intraday_refresh_lock"):
         app.state.intraday_refresh_lock = asyncio.Lock()
 
@@ -118,6 +118,7 @@ async def _run_intraday_refresh(limit: int | None = None):
             limit=limit,
             batch_size=INTRADAY_REFRESH_BATCH_SIZE,
             pause_seconds=INTRADAY_REFRESH_PAUSE_SECONDS,
+            force=force,
         )
 
 
@@ -230,10 +231,10 @@ def refresh_tickers(_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/refresh/intraday/all")
-async def refresh_all_intraday_data(limit: int = Query(None), _user: dict = Depends(get_current_user)):
+async def refresh_all_intraday_data(limit: int = Query(None), force: bool = Query(False), _user: dict = Depends(get_current_user)):
     """Trigger a massive scrape of intraday data for all listed Taiwanese stocks."""
     try:
-        results = await _run_intraday_refresh(limit=limit)
+        results = await _run_intraday_refresh(limit=limit, force=force)
         success_count = sum(1 for r in results if r["status"] == "success")
         return {
             "status": "success", 

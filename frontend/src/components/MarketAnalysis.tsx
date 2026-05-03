@@ -263,9 +263,9 @@ export default function MarketAnalysis() {
   }, []);
 
   // Auto-refresh: fetch intraday + refresh ticker list, then schedule next
-  const doRefresh = async () => {
+  const doRefresh = async (force = false) => {
     try {
-      await refreshAllIntradayData();
+      await refreshAllIntradayData(undefined, force);
     } catch {}
     try {
       await refreshTickers();
@@ -393,7 +393,7 @@ export default function MarketAnalysis() {
               Next refresh at {new Date(nextRefresh).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
-          <button type="button" onClick={() => { doRefresh(); }}
+          <button type="button" onClick={() => { doRefresh(true); }}
             className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded transition">
             ↻ Refresh Now
           </button>

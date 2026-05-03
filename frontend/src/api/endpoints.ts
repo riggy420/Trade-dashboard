@@ -35,8 +35,9 @@ export const getTickers = async () => {
 };
 
 // 3. Intraday Actions
-export const refreshAllIntradayData = async (limit?: number) => {
-  const url = limit ? `/refresh/intraday/all?limit=${limit}` : `/refresh/intraday/all`;
+export const refreshAllIntradayData = async (limit?: number, force?: boolean) => {
+  let url = limit ? `/refresh/intraday/all?limit=${limit}` : `/refresh/intraday/all`;
+  if (force) url += `${limit ? '&' : '?'}force=true`;
   const response = await api.post(url);
   return response.data;
 };

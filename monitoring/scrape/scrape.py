@@ -444,7 +444,7 @@ def _rewrite_intraday_file(filepath: str, frame: pd.DataFrame) -> str:
     return filepath
 
 
-async def fetch_all_intraday(limit=None, batch_size: int = 20, pause_seconds: int = 2, retry_on_attribute_error: bool = True):
+async def fetch_all_intraday(limit=None, batch_size: int = 20, pause_seconds: int = 2, retry_on_attribute_error: bool = True, force: bool = False):
     """
     Scrapes all Taiwanese stocks and fetches their intraday data.
     Takes an optional 'limit' to prevent long scraping times during testing.
@@ -468,7 +468,7 @@ async def fetch_all_intraday(limit=None, batch_size: int = 20, pause_seconds: in
                     market = ticker[2]
                 else:
                     symbol, market = _split_ticker_cache_entry(ticker)
-                tasks.append(loop.run_in_executor(executor, fetch_intraday, symbol, market))
+                tasks.append(loop.run_in_executor(executor, fetch_intraday, symbol, market, force))
 
             completed_results = await asyncio.wait_for(
                 asyncio.gather(*tasks, return_exceptions=True), timeout=300
@@ -489,7 +489,7 @@ async def fetch_all_intraday(limit=None, batch_size: int = 20, pause_seconds: in
     if attribute_error_seen and retry_on_attribute_error:
         print("AttributeError detected during intraday fetch; refreshing ticker list and retrying once.")
         fetch_twse_tickers()
-        return await fetch_all_intraday(limit=limit, batch_size=batch_size, pause_seconds=pause_seconds, retry_on_attribute_error=False)
+        return await fetch_all_intraday(limit=limit, batch_size=batch_size, pause_seconds=pause_seconds, retry_on_attribute_error=False, force=force)
 
     return results
 
@@ -550,7 +550,7 @@ def _generate_synthetic_historical(symbol: str) -> pd.DataFrame:
     return pd.DataFrame(rows).set_index("Date")
 
 
-def fetch_intraday(ticker: str, market: str | None = None) -> str:
+def fetch_intraday(ticker: str, market: str | None = None, force: bool = False) -> str:
     """
     Fetches intraday data for the given ticker.
     Uses the cached exchange code to avoid redundant fallback attempts.
@@ -560,22 +560,23 @@ def fetch_intraday(ticker: str, market: str | None = None) -> str:
     if base_ticker.endswith(".TW") or base_ticker.endswith(".TWO"):
         base_ticker = base_ticker.split(".")[0]
 
-    # Skip if Redis has fresh data (< 1 hour old)
-    try:
-        from redis import Redis as SyncRedis
-        r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True, socket_connect_timeout=1)
-        if r.ping():
-            raw = r.get(f"intraday:meta:{base_ticker}")
-            if raw:
-                meta = json.loads(raw)
-                last_upd = meta.get("lastUpdated", "")
-                if last_upd:
-                    age = (datetime.now() - datetime.fromisoformat(last_upd)).total_seconds()
-                    if age < 3600:
-                        print(f"↻ {base_ticker}: fresh ({age/60:.0f}m ago), skipping")
-                        return "cached"
-    except Exception:
-        pass
+    # Skip if Redis has fresh data (< 1 hour old) — unless forced
+    if not force:
+        try:
+            from redis import Redis as SyncRedis
+            r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True, socket_connect_timeout=1)
+            if r.ping():
+                raw = r.get(f"intraday:meta:{base_ticker}")
+                if raw:
+                    meta = json.loads(raw)
+                    last_upd = meta.get("lastUpdated", "")
+                    if last_upd:
+                        age = (datetime.now() - datetime.fromisoformat(last_upd)).total_seconds()
+                        if age < 3600:
+                            print(f"↻ {base_ticker}: fresh ({age/60:.0f}m ago), skipping")
+                            return "cached"
+        except Exception:
+            pass
 
     print(f"Fetching hourly intraday data for {base_ticker}...")
 
