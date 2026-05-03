@@ -190,7 +190,7 @@ export default function ReportsPage() {
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value">
                   {pieData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
                 </Pie>
-                <Tooltip formatter={(v: number) => fmt(v)} />
+                <Tooltip formatter={(v: any) => [fmt(Number(v) || 0), 'Value']} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-col gap-1.5 ml-2 text-xs">
