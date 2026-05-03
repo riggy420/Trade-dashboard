@@ -448,7 +448,11 @@ export default function Dashboard() {
                     <Pie data={industryPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={2} dataKey="value">
                       {industryPieData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
                     </Pie>
-                    <Tooltip formatter={(v: any) => [fmtNT(Number(v) || 0), 'Value']} />
+                    <Tooltip formatter={(_v: any, _n: string, props: any) => {
+                      const total = industryPieData.reduce((s, x) => s + x.value, 0);
+                      const pct = total > 0 ? ((props.payload.value / total) * 100).toFixed(1) : 0;
+                      return [`${pct}%`, props.payload.name];
+                    }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-col gap-1.5 text-xs ml-2 max-h-[160px] overflow-y-auto">
