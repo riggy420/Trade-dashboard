@@ -55,7 +55,7 @@ function AppShell() {
           <Link to="/" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-black font-semibold text-black transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">⊞</span> Dashboard</span>
           </Link>
-          <Link to="/analysis/2330" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
+          <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📈</span> Market Analysis</span>
           </Link>
           <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
@@ -122,7 +122,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/analysis" element={<MarketAnalysis />} />
+                <Route path="/analysis" element={<Navigate to="/analysis/all" replace />} />
                 <Route path="/analysis/:tickerId" element={<MarketAnalysis />} />
                 <Route path="/watchlist" element={<WatchlistPage />} />
                 <Route path="/reports" element={<ReportsPage />} />

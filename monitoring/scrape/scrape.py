@@ -67,6 +67,34 @@ MARKET_SUFFIXES = {
     "TPEx": ".TWO",
 }
 
+BOND_ETF_TICKERS = [
+    ("00679B", "Yuanta US Treasury 20+ Year Bond ETF", "TPEx"),
+    ("00687B", "Cathay US Treasury 20+ YR ETF", "TPEx"),
+    ("00694B", "Fubon 1-3 Years US Treasury Bond ETF", "TPEx"),
+    ("00695B", "Fubon 7-10 Years US Treasury Bond ETF", "TPEx"),
+    ("00696B", "Fubon 20+ Years US Treasury Bond ETF", "TPEx"),
+    ("00697B", "Yuanta US Treasury 7-10 Year Bond ETF", "TPEx"),
+    ("00719B", "Yuanta US Treasury 1-3 Year Bond ETF", "TPEx"),
+    ("00720B", "Yuanta US 20+ Year BBB Corporate Bond ETF", "TPEx"),
+    ("00725B", "Cathay BBB Corporate Bond ex China 10Yr+ ETF", "TPEx"),
+    ("00740B", "Fubon 10+ Years US Corporate Bond BBB ETF", "TPEx"),
+    ("00751B", "Yuanta US 20+ Year AAA-A Corporate Bond ETF", "TPEx"),
+    ("00710B", "Fuh Hwa 1-5 Year High Yield ETF", "TWSE"),
+    ("00711B", "Fuh Hwa Emerging Market 10+ Year Bond ETF", "TWSE"),
+    ("00772B", "CTBC USD Corporate 10+ Year High Grade Bond ETF", "TPEx"),
+    ("00795B", "CTBC US Treasury 20+ Year Bond ETF", "TPEx"),
+    ("00859B", "Capital ICE 0-1 Year US Treasury ETF", "TPEx"),
+    ("00931B", "UPAMC US Treasury 20+ Year ETF", "TPEx"),
+    ("00937B", "Capital ICE ESG 20+ Year BBB US Corporate ETF", "TPEx"),
+    ("00933B", "Cathay US Corporate 10+ Years Banking ETF", "TPEx"),
+    ("00942B", "Taishin US Corporate 20+ Years Single A ETF", "TPEx"),
+    ("00948B", "CTBC Enhanced Yield 15+ Year IG US Corporate ESG ETF", "TPEx"),
+    ("00950B", "KGI Global 10+ Year USD Single A Corporate Bond ETF", "TPEx"),
+    ("00959B", "United 15+ Years BBB US Corporate ETF", "TPEx"),
+    ("00970B", "Shin Kong 20+ Year BBB USD IG Corporate Bond ETF", "TPEx"),
+    ("00864B", "CTBC 0-1 Year US Treasury Bond ETF", "TPEx"),
+]
+
 
 def _parse_ticker_cache_line(line: str) -> tuple[str, str, str | None]:
     parts = [part.strip() for part in line.split(",") if part.strip()]
@@ -108,13 +136,17 @@ def fetch_twse_tickers() -> list:
         
     # Remove duplicates and sort
     tickers = sorted([(symbol, meta[0], meta[1]) for symbol, meta in tickers.items()], key=lambda item: item[0])
-    
+
+    # Append bond ETF tickers (not covered by ISIN page scraper)
+    for bond in BOND_ETF_TICKERS:
+        tickers.append(bond)
+
     # Save the list to a text file for reference
     list_path = os.path.join(DATA_DIR, "twse_tickers.txt")
     with open(list_path, "w", encoding="utf-8") as f:
         f.write("\n".join(f"{symbol},{name},{market}" for symbol, name, market in tickers))
-        
-    print(f"Successfully scraped {len(tickers)} Taiwanese tickers.")
+
+    print(f"Successfully scraped {len(tickers)} Taiwanese tickers (incl. bond ETFs).")
     return tickers
 
 

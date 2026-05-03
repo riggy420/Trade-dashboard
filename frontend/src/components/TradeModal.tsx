@@ -15,7 +15,6 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
   const [tradeType, setTradeType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [volume, setVolume] = useState('');
   const [limitPrice, setLimitPrice] = useState('');
-  const [assetType, setAssetType] = useState<string>('stock');
   const [netPosition, setNetPosition] = useState<number | null>(null);
   const [positionLoading, setPositionLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +60,7 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
     setSubmitting(true);
     setError('');
     try {
-      const result = await submitTrade(ticker, companyName, side, tradeType, marketPrice, volumeNum, limitPriceNum, assetType);
+      const result = await submitTrade(ticker, companyName, side, tradeType, marketPrice, volumeNum, limitPriceNum);
       if (result.status === 'pending') {
         onSuccess();  // triggers parent toast
         onClose();
@@ -131,23 +130,6 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
                     ? 'Executes only when the market price drops to or below your limit.'
                     : 'Executes only when the market price rises to or above your limit.'}
               </p>
-            </div>
-
-            {/* Asset type */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Asset Type</label>
-              <div className="flex gap-2">
-                {(['stock', 'bond', 'mutual_fund'] as const).map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => setAssetType(a)}
-                    className={`flex-1 py-2 rounded border text-sm font-medium transition capitalize ${assetType === a ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    {a === 'mutual_fund' ? 'Mutual Fund' : a}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Limit price input — only for LIMIT orders */}
@@ -236,7 +218,6 @@ export default function TradeModal({ ticker, companyName, currentPrice, side, on
               ['Symbol', ticker],
               ['Company', companyName],
               ['Order Type', tradeType === 'MARKET' ? 'Market' : 'Limit'],
-              ['Asset Type', <span className="capitalize">{assetType === 'mutual_fund' ? 'Mutual Fund' : assetType}</span>],
               ...(tradeType === 'LIMIT' ? [['Limit Price', fmtNT(limitPriceNum!)]] : [['Market Price', fmtNT(marketPrice)]]),
               ['Volume', `${volumeNum} shares`],
               ['Total Value', fmtNT(total)],

@@ -339,10 +339,16 @@ export default function MarketAnalysis() {
       return 0;
     });
 
-  const renderBoard = () => (
+  const currentIndustry = tickers.find((t) => t.symbol === activeTicker)?.industry || '';
+  const sameIndustryTickers = currentIndustry
+    ? tickers.filter((t) => t.industry === currentIndustry)
+    : filteredTickers;
+
+  const renderBoard = (title: string, data: any[], showRefresh = true) => (
     <div className="border border-gray-200 rounded shadow-sm bg-white p-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="font-bold text-lg">Taiwan Board</h2>
+        <h2 className="font-bold text-lg">{title}</h2>
+        {showRefresh && (
         <div className="flex items-center gap-3">
           {nextRefresh !== null && (
             <span className="text-xs text-gray-400 tabular-nums">
@@ -359,6 +365,7 @@ export default function MarketAnalysis() {
             {autoRefresh ? '⏱ Auto (1h) On' : '⏱ Auto (1h) Off'}
           </button>
         </div>
+        )}
       </div>
       <div className="mb-4">
         <input type="text" placeholder="Filter by symbol or name..."
@@ -378,7 +385,7 @@ export default function MarketAnalysis() {
             </tr>
           </thead>
           <tbody>
-            {filteredTickers.length > 0 ? filteredTickers.map((t, idx) => (
+            {data.length > 0 ? data.map((t, idx) => (
               <tr key={idx} className="border-b hover:bg-gray-50 cursor-pointer transition" onClick={() => navigate(`/analysis/${t.symbol}`)}>
                 <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                   <button type="button" onClick={() => toggleWatchlist(t.symbol, t.name, 'stock')} className="text-base leading-none transition">
@@ -397,12 +404,12 @@ export default function MarketAnalysis() {
                 <td className={`py-3 px-2 font-semibold text-right ${t.change?.includes('+') ? 'text-green-600' : t.change?.includes('-') ? 'text-red-600' : 'text-gray-400'}`}>{t.change}</td>
               </tr>
             )) : (
-              <tr><td colSpan={6} className="py-4 text-center text-gray-500">No tickers match your filter.</td></tr>
+              <tr><td colSpan={6} className="py-4 text-center text-gray-500">No stocks found.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-500 mt-2">Showing {filteredTickers.length} of {tickers.length} stocks</p>
+      <p className="text-xs text-gray-500 mt-2">Showing {data.length} stocks</p>
     </div>
   );
 
@@ -414,7 +421,7 @@ export default function MarketAnalysis() {
           <h2 className="text-xl font-bold text-gray-900">Taiwan Board</h2>
           <p className="text-sm text-gray-500 mt-1">All listed Taiwanese stocks with live prices</p>
         </div>
-        {renderBoard()}
+        {renderBoard('Taiwan Board', filteredTickers)}
       </div>
     );
   }
@@ -603,8 +610,12 @@ export default function MarketAnalysis() {
         <div className="bg-gray-100 p-4 rounded h-32">News 3</div>
       </div>
 
-      {/* Taiwan Board */}
-      {renderBoard()}
+      {/* Same-industry stocks */}
+      {renderBoard(
+        currentIndustry ? `${currentIndustry} Stocks` : 'Related Stocks',
+        sameIndustryTickers,
+        false
+      )}
 
       {tradeModal.open && (
         <TradeModal
