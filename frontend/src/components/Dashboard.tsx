@@ -264,12 +264,12 @@ export default function Dashboard() {
     return counts;
   }, [tickers]);
 
-  // Cumulative returns: portfolio value progression over 30 days
+  // Cumulative returns: portfolio value progression over last 7 days
   const cumulativeReturns = useMemo(() => {
     if (!holdingsWithPnl.length) return [];
     const totalCost = holdingsWithPnl.reduce((s, h) => s + h.costBasis, 0);
     const totalValue = holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0);
-    const days = 30;
+    const days = 7;
     const data = [];
     const now = new Date();
     for (let i = 0; i <= days; i++) {
@@ -426,7 +426,8 @@ export default function Dashboard() {
       {holdingsWithPnl.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">Cumulative Returns</h3>
+            <h3 className="text-sm font-bold text-gray-700 mb-1">Cumulative Returns</h3>
+            <p className="text-[10px] text-gray-400 mb-2">Portfolio P&amp;L progression over last 7 days</p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={cumulativeReturns}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -439,7 +440,8 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">Return Distribution</h3>
+            <h3 className="text-sm font-bold text-gray-700 mb-1">Return Distribution</h3>
+            <p className="text-[10px] text-gray-400 mb-2">Number of stocks by today's % change range</p>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={returnDistribution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
