@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers, refreshIntraday, fetchPosition } from '../api/endpoints';
+import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers, refreshIntraday, fetchPosition, fetchFundamentals } from '../api/endpoints';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import TradeModal from './TradeModal';
 import { useWatchlist } from '../context/WatchlistContext';
@@ -71,6 +71,7 @@ export default function MarketAnalysis() {
   const [tradeSuccess, setTradeSuccess] = useState('');
   // Current position for this ticker
   const [currentPosition, setCurrentPosition] = useState<number | null>(null);
+  const [fundamentals, setFundamentals] = useState<any>(null);
   // Taiwan Board table
   const [tickers, setTickers] = useState<any[]>([]);
   const [tickerSearch, setTickerSearch] = useState('');
@@ -240,12 +241,15 @@ export default function MarketAnalysis() {
     loadData();
   }, [activeTicker, isAllStocks]);
 
-  // Fetch current position for this ticker
+  // Fetch current position + fundamentals for this ticker
   useEffect(() => {
     if (isOverview) return;
     fetchPosition(activeTicker)
       .then((data) => setCurrentPosition(data.net_position ?? 0))
       .catch(() => setCurrentPosition(0));
+    fetchFundamentals(activeTicker)
+      .then((data) => setFundamentals(data))
+      .catch(() => setFundamentals(null));
   }, [activeTicker, isOverview]);
 
   const fetchTickersData = () => {
@@ -571,6 +575,31 @@ export default function MarketAnalysis() {
            </div>
          </div>
          <div className="text-gray-500 font-semibold">Live Feed</div>
+
+         {fundamentals && (
+           <div className="grid grid-cols-5 gap-3">
+             <div className="bg-white border border-gray-200 rounded p-2 shadow-sm text-center">
+               <div className="text-[10px] uppercase text-gray-500">P/E Ratio</div>
+               <div className="text-sm font-bold">{fundamentals.pe ?? '—'}</div>
+             </div>
+             <div className="bg-white border border-gray-200 rounded p-2 shadow-sm text-center">
+               <div className="text-[10px] uppercase text-gray-500">EPS</div>
+               <div className="text-sm font-bold">{fundamentals.eps ? `NT$${fundamentals.eps}` : '—'}</div>
+             </div>
+             <div className="bg-white border border-gray-200 rounded p-2 shadow-sm text-center">
+               <div className="text-[10px] uppercase text-gray-500">ROE</div>
+               <div className="text-sm font-bold">{fundamentals.roe != null ? `${fundamentals.roe}%` : '—'}</div>
+             </div>
+             <div className="bg-white border border-gray-200 rounded p-2 shadow-sm text-center">
+               <div className="text-[10px] uppercase text-gray-500">Beta</div>
+               <div className="text-sm font-bold">{fundamentals.beta ?? '—'}</div>
+             </div>
+             <div className="bg-white border border-gray-200 rounded p-2 shadow-sm text-center">
+               <div className="text-[10px] uppercase text-gray-500">Market Cap</div>
+               <div className="text-sm font-bold">{fundamentals.market_cap ? `${(fundamentals.market_cap / 1e9).toFixed(1)}B` : '—'}</div>
+             </div>
+           </div>
+         )}
       </div>
 
       <div className="bg-white p-4 shadow rounded h-96 w-full mb-8 border border-gray-200 overflow-hidden relative transition-all duration-300 hover:shadow-lg">

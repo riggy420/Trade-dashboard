@@ -65,7 +65,7 @@ export default function Dashboard() {
 
   const refreshLiveData = () => {
     fetchIndicesData();
-    fetchSupervisionAlerts();
+    // fetchSupervisionAlerts();
     getTickers().then((data) => {
       const newTickers = data.tickers || [];
       setTickers(newTickers);
@@ -83,16 +83,16 @@ export default function Dashboard() {
     };
   }, []);
 
-  const fetchSupervisionAlerts = async () => {
-    setSupervisionLoading(true);
-    try {
-      const data = await fetchSupervisionScan();
-      setSupervisionAlerts(data.stocks || []);
-    } catch (e) {
-      console.error("Failed to load supervision scan:", e);
-    }
-    setSupervisionLoading(false);
-  };
+  // const fetchSupervisionAlerts = async () => {
+  //   setSupervisionLoading(true);
+  //   try {
+  //     const data = await fetchSupervisionScan();
+  //     setSupervisionAlerts(data.stocks || []);
+  //   } catch (e) {
+  //     console.error("Failed to load supervision scan:", e);
+  //   }
+  //   setSupervisionLoading(false);
+  // };
 
   const fetchIndicesData = async () => {
     try {
