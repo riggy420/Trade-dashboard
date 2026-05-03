@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchTrades, fetchPendingOrders, cancelPendingOrder, updatePendingOrder } from '../api/endpoints';
+import { fetchTrades, fetchPendingOrders, cancelPendingOrder, updatePendingOrder, getTickers } from '../api/endpoints';
 
 interface Trade {
   id: number;
@@ -27,6 +27,8 @@ export default function ReportsPage() {
   const [editingPending, setEditingPending] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState('');
   const [editVolume, setEditVolume] = useState('');
+  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
+  const [tickers, setTickers] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const loadData = () => {
@@ -37,6 +39,9 @@ export default function ReportsPage() {
     fetchPendingOrders()
       .then((data) => setPendingOrders(data.pending || []))
       .catch(() => {});
+    getTickers()
+      .then((data) => setTickers(data.tickers || []))
+      .catch(() => {});
   };
 
   useEffect(() => { loadData(); }, []);
@@ -45,6 +50,7 @@ export default function ReportsPage() {
     try {
       await cancelPendingOrder(orderId);
       setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setCancelConfirm(null);
     } catch {}
   };
 
@@ -89,6 +95,18 @@ export default function ReportsPage() {
   }
   const openPositions = [...positionMap.values()].filter((p) => p.net > 0);
 
+  // Unrealized P&L: current market value - cost basis
+  let unrealizedPnl = 0;
+  let hasPrices = false;
+  for (const pos of openPositions) {
+    const ticker = tickers.find((t) => t.symbol === pos.symbol);
+    const currentPrice = ticker ? parseFloat(ticker.price) : null;
+    if (currentPrice) {
+      hasPrices = true;
+      unrealizedPnl += (currentPrice * pos.net) - pos.totalCost;
+    }
+  }
+
   return (
     <div className="p-8 text-gray-800">
       <div className="mb-6">
@@ -97,7 +115,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded p-4 shadow-sm">
           <p className="text-xs uppercase text-gray-500 font-semibold">Total Trades</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{trades.length}</p>
@@ -114,6 +132,12 @@ export default function ReportsPage() {
           <p className="text-xs uppercase text-gray-600 font-semibold">Net Invested</p>
           <p className={`text-2xl font-bold mt-1 ${netInvested >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
             {fmt(netInvested)}
+          </p>
+        </div>
+        <div className={`rounded p-4 shadow-sm border ${unrealizedPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <p className="text-xs uppercase text-gray-600 font-semibold">Unrealized P&amp;L</p>
+          <p className={`text-2xl font-bold mt-1 ${unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            {hasPrices ? `${unrealizedPnl >= 0 ? '+' : ''}${fmt(unrealizedPnl)}` : '—'}
           </p>
         </div>
       </div>
@@ -237,7 +261,7 @@ export default function ReportsPage() {
                         <>
                           <button onClick={() => startEdit(o)}
                             className="text-xs text-blue-600 hover:text-blue-800 underline mr-1">Edit</button>
-                          <button onClick={() => handleCancel(o.id)}
+                          <button onClick={() => setCancelConfirm(o.id)}
                             className="text-xs text-red-500 hover:text-red-700 underline">Cancel</button>
                         </>
                       )}
@@ -302,6 +326,29 @@ export default function ReportsPage() {
         </div>
       )}
 
+      {cancelConfirm && (() => {
+        const o = pendingOrders.find((p) => p.id === cancelConfirm);
+        return o ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900">Cancel Pending Order</h3>
+              </div>
+              <div className="px-6 py-4 space-y-2 text-sm text-gray-700">
+                <p><span className="font-semibold">{o.side}</span> {o.volume} shares of <span className="font-bold text-blue-600">{o.symbol}</span></p>
+                <p>Limit Price: <span className="font-semibold">{fmt(Number(o.limit_price))}</span></p>
+                <p className="text-gray-500 text-xs">This order will be removed from the queue.</p>
+              </div>
+              <div className="px-6 py-3 border-t border-gray-100 flex gap-3 justify-end">
+                <button onClick={() => setCancelConfirm(null)}
+                  className="px-4 py-1.5 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50">Keep Order</button>
+                <button onClick={() => handleCancel(cancelConfirm)}
+                  className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded">Cancel Order</button>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 }
