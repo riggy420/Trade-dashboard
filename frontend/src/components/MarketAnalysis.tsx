@@ -343,6 +343,11 @@ export default function MarketAnalysis() {
   const tickerSortIcon = (f: typeof tickerSortField) =>
     tickerSortField !== f ? '⇅' : tickerSortOrder === 'asc' ? '↑' : '↓';
 
+  // Only plain stocks (4-digit, not bonds/funds) for the All Stocks board
+  const stockOnlyTickers = tickers.filter((t) =>
+    /^\d{4}$/.test(t.symbol) && !t.symbol.endsWith('B') && !t.symbol.startsWith('TW000T')
+  );
+
   const filteredTickers = tickers
     .filter((t) => {
       const s = tickerSearch.toLowerCase();
@@ -448,7 +453,7 @@ export default function MarketAnalysis() {
     const desc = isBonds ? 'Exchange-traded bond funds listed on TWSE/TPEx' :
                  isFunds ? 'Mutual funds available on Yahoo Finance' :
                  'All listed Taiwanese stocks with live prices';
-    const data = isBonds ? bondTickers : isFunds ? fundTickers : filteredTickers;
+    const data = isBonds ? bondTickers : isFunds ? fundTickers : stockOnlyTickers;
     return (
       <div className="p-8 text-gray-800">
         <div className="mb-6">
