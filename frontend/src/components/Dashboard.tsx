@@ -473,7 +473,7 @@ export default function Dashboard() {
                     <Pie data={industryPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={2} dataKey="value">
                       {industryPieData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
                     </Pie>
-                    <Tooltip formatter={(value: any, _name: string) => {
+                    <Tooltip formatter={(value: any) => {
                       const total = industryPieData.reduce((s, x) => s + x.value, 0);
                       const pct = total > 0 ? ((Number(value) / total) * 100).toFixed(1) : 0;
                       return [`${pct}%`, 'Share'];
