@@ -73,6 +73,26 @@ def _seconds_until_next_hour() -> float:
     return max(0.0, (next_hour - now).total_seconds())
 
 
+async def _bootstrap_data():
+    """Ensure ticker list and a starter batch of intraday data exists on first run."""
+    tickers_file = os.path.join(DATA_DIR, "twse_tickers.txt")
+    if not os.path.exists(tickers_file):
+        print("No ticker cache found — generating ticker list...")
+        try:
+            fetch_twse_tickers()
+        except Exception as e:
+            print(f"Ticker list generation failed: {e}")
+
+    # If no intraday data at all, scrape a fast starter batch
+    latest = _get_latest_intraday_cache_time()
+    if latest is None:
+        print("No intraday cache found — seeding with starter batch of 100 stocks...")
+        try:
+            await _run_intraday_refresh(limit=100)
+        except Exception as e:
+            print(f"Starter batch failed: {e}")
+
+
 async def _refresh_intraday_if_stale() -> bool:
     latest_cache_time = _get_latest_intraday_cache_time()
     if latest_cache_time is None:
@@ -133,6 +153,7 @@ async def startup_tasks():
     app.state.hourly_intraday_refresh_task = asyncio.create_task(_hourly_intraday_refresh_loop())
     app.state.pending_order_checker_task = asyncio.create_task(_pending_order_checker())
     asyncio.create_task(_ensure_sectors_cache())
+    asyncio.create_task(_bootstrap_data())
 
 
 @app.on_event("shutdown")
