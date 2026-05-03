@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchTrades, fetchPendingOrders, cancelPendingOrder, updatePendingOrder, getTickers } from '../api/endpoints';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { fetchTrades, fetchPendingOrders, cancelPendingOrder, updatePendingOrder, getTickers, deleteTrade } from '../api/endpoints';
+import EditTradeModal from './EditTradeModal';
 
 interface Trade {
   id: number;
@@ -29,6 +31,9 @@ export default function ReportsPage() {
   const [editVolume, setEditVolume] = useState('');
   const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
   const [tickers, setTickers] = useState<any[]>([]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const navigate = useNavigate();
 
   const loadData = () => {
@@ -107,6 +112,40 @@ export default function ReportsPage() {
     }
   }
 
+  // Pie chart: group positions by name-simplified categories
+  const pieData = useMemo(() => {
+    const groups: Record<string, number> = {};
+    for (const pos of openPositions) {
+      const ticker = tickers.find((t) => t.symbol === pos.symbol);
+      const val = ticker ? (parseFloat(ticker.price) || 0) * pos.net : pos.totalCost;
+      const sym = pos.symbol;
+      // Categorize: bond ETFs end with B, mutual funds are TW000T, else stock
+      const cat = /^\d{4,6}B/.test(sym) ? 'Bonds' : sym.startsWith('TW000T') ? 'Mutual Funds' : 'Stocks';
+      groups[cat] = (groups[cat] || 0) + val;
+    }
+    return Object.entries(groups).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));
+  }, [openPositions, tickers]);
+
+  const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981'];
+
+  // Date filter
+  const filteredTrades = useMemo(() => {
+    return trades.filter((t) => {
+      const d = new Date(t.traded_at).getTime();
+      if (dateFrom && d < new Date(dateFrom).getTime()) return false;
+      if (dateTo && d > new Date(dateTo).setHours(23, 59, 59, 999)) return false;
+      return true;
+    });
+  }, [trades, dateFrom, dateTo]);
+
+  const handleDelete = async (tradeId: number) => {
+    if (!window.confirm('Delete this trade? This cannot be undone.')) return;
+    try {
+      await deleteTrade(tradeId);
+      setTrades((prev) => prev.filter((t) => t.id !== tradeId));
+    } catch {}
+  };
+
   return (
     <div className="p-8 text-gray-800">
       <div className="mb-6">
@@ -114,32 +153,56 @@ export default function ReportsPage() {
         <p className="text-sm text-gray-500 mt-1">Your positions, order history, and pending orders</p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 rounded p-4 shadow-sm">
-          <p className="text-xs uppercase text-gray-500 font-semibold">Total Trades</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{trades.length}</p>
+      {/* Summary Cards + Pie Chart */}
+      <div className="flex gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-3 flex-1">
+          <div className="bg-white border border-gray-200 rounded p-3 shadow-sm">
+            <p className="text-xs uppercase text-gray-500 font-semibold">Total Trades</p>
+            <p className="text-xl font-bold text-gray-900 mt-1">{filteredTrades.length}</p>
+          </div>
+          <div className="bg-white border border-green-200 rounded p-3 shadow-sm">
+            <p className="text-xs uppercase text-green-600 font-semibold">Total Bought</p>
+            <p className="text-xl font-bold text-green-700 mt-1">{fmt(totalBuy)}</p>
+          </div>
+          <div className="bg-white border border-red-200 rounded p-3 shadow-sm">
+            <p className="text-xs uppercase text-red-500 font-semibold">Total Sold</p>
+            <p className="text-xl font-bold text-red-600 mt-1">{fmt(totalSell)}</p>
+          </div>
+          <div className={`rounded p-3 shadow-sm border ${netInvested >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
+            <p className="text-xs uppercase text-gray-600 font-semibold">Net Invested</p>
+            <p className={`text-xl font-bold mt-1 ${netInvested >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(netInvested)}</p>
+          </div>
+          <div className={`rounded p-3 shadow-sm border ${unrealizedPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <p className="text-xs uppercase text-gray-600 font-semibold">Unrealized P&amp;L</p>
+            <p className={`text-xl font-bold mt-1 ${unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              {hasPrices ? `${unrealizedPnl >= 0 ? '+' : ''}${fmt(unrealizedPnl)}` : '—'}
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded p-3 shadow-sm">
+            <p className="text-xs uppercase text-gray-500 font-semibold">Open Positions</p>
+            <p className="text-xl font-bold text-gray-900 mt-1">{openPositions.length}</p>
+          </div>
         </div>
-        <div className="bg-white border border-green-200 rounded p-4 shadow-sm">
-          <p className="text-xs uppercase text-green-600 font-semibold">Total Bought</p>
-          <p className="text-2xl font-bold text-green-700 mt-1">{fmt(totalBuy)}</p>
-        </div>
-        <div className="bg-white border border-red-200 rounded p-4 shadow-sm">
-          <p className="text-xs uppercase text-red-500 font-semibold">Total Sold</p>
-          <p className="text-2xl font-bold text-red-600 mt-1">{fmt(totalSell)}</p>
-        </div>
-        <div className={`rounded p-4 shadow-sm border ${netInvested >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
-          <p className="text-xs uppercase text-gray-600 font-semibold">Net Invested</p>
-          <p className={`text-2xl font-bold mt-1 ${netInvested >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-            {fmt(netInvested)}
-          </p>
-        </div>
-        <div className={`rounded p-4 shadow-sm border ${unrealizedPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-          <p className="text-xs uppercase text-gray-600 font-semibold">Unrealized P&amp;L</p>
-          <p className={`text-2xl font-bold mt-1 ${unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-            {hasPrices ? `${unrealizedPnl >= 0 ? '+' : ''}${fmt(unrealizedPnl)}` : '—'}
-          </p>
-        </div>
+        {pieData.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex items-center" style={{ width: '260px' }}>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value">
+                  {pieData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+                </Pie>
+                <Tooltip formatter={(v: number) => fmt(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-col gap-1.5 ml-2 text-xs">
+              {pieData.map((d, i) => (
+                <div key={d.name} className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i] }} />
+                  <span className="text-gray-600">{d.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Open Positions */}
@@ -177,6 +240,22 @@ export default function ReportsPage() {
         </div>
       )}
 
+      {/* Date Range Filter */}
+      {activeTab === 'history' && (
+        <div className="mb-3 flex items-center gap-3">
+          <span className="text-xs text-gray-500 font-semibold">Filter:</span>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-blue-500" />
+          <span className="text-xs text-gray-400">to</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-blue-500" />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="text-xs text-blue-500 hover:text-blue-700">Clear</button>
+          )}
+        </div>
+      )}
+
       {/* Tabs: Order History / Pending Orders */}
       <div className="mb-4 flex gap-4 border-b border-gray-200">
         <button
@@ -185,7 +264,7 @@ export default function ReportsPage() {
             activeTab === 'history' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          Order History ({trades.length})
+          Order History ({filteredTrades.length})
         </button>
         <button
           onClick={() => setActiveTab('pending')}
@@ -274,7 +353,7 @@ export default function ReportsPage() {
         </div>
       ) : loading ? (
         <p className="text-sm text-gray-400 italic">Loading order history...</p>
-      ) : trades.length === 0 ? (
+      ) : filteredTrades.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded p-12 text-center">
           <p className="text-gray-400 text-sm">No trades recorded yet.</p>
           <p className="text-gray-400 text-xs mt-1">Use the Buy / Sell buttons on any analysis page to place an order.</p>
@@ -293,10 +372,11 @@ export default function ReportsPage() {
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Limit</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Volume</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">Total Value</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {trades.map((t) => (
+              {filteredTrades.map((t) => (
                 <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                     {new Date(t.traded_at).toLocaleString()}
@@ -319,6 +399,12 @@ export default function ReportsPage() {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-700">{t.volume}</td>
                   <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(Number(t.total_value))}</td>
+                  <td className="px-4 py-3 text-center">
+                    <button onClick={(e) => { e.stopPropagation(); setEditingTrade(t); }}
+                      className="text-xs text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
+                      className="text-xs text-red-500 hover:text-red-700">Delete</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -349,6 +435,13 @@ export default function ReportsPage() {
           </div>
         ) : null;
       })()}
+      {editingTrade && (
+        <EditTradeModal
+          trade={editingTrade}
+          onClose={() => setEditingTrade(null)}
+          onSuccess={() => { setEditingTrade(null); loadData(); }}
+        />
+      )}
     </div>
   );
 }
