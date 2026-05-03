@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory } from '../api/endpoints';
+import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory, fetchTrades } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [indexHistory, setIndexHistory] = useState<{ date: string; close: number }[]>([]);
   const [indexHistoryLoading, setIndexHistoryLoading] = useState(false);
   const [holdings, setHoldings] = useState<any[]>([]);
+  const [trades, setTrades] = useState<any[]>([]);
   const [positionModal, setPositionModal] = useState<{ symbol: string; name: string } | null>(null);
   const [positionHistory, setPositionHistory] = useState<any[]>([]);
   const [positionHistoryLoading, setPositionHistoryLoading] = useState(false);
@@ -72,6 +73,7 @@ export default function Dashboard() {
       checkSwings(newTickers);
     }).catch(() => {});
     fetchHoldings().then((data) => setHoldings(data.holdings || [])).catch(() => {});
+    fetchTrades().then((data) => setTrades(data.trades || [])).catch(() => {});
   };
 
   useEffect(() => {
@@ -244,7 +246,7 @@ export default function Dashboard() {
     return top;
   }, [holdingsWithPnl, tickers]);
 
-  // Return distribution: bucket ticker changes into percentage ranges
+  // Return distribution: bucket trade returns (sell_price/buy_price - 1) into % ranges
   const returnDistribution = useMemo(() => {
     const buckets = [
       { label: '< -4%', min: -Infinity, max: -4 },
@@ -254,37 +256,85 @@ export default function Dashboard() {
       { label: '2% to 4%', min: 2, max: 4 },
       { label: '> 4%', min: 4, max: Infinity },
     ];
-    const counts = buckets.map((b) => {
-      const count = tickers.filter((t) => {
-        const ch = parseFloat(t.change) || 0;
-        return ch >= b.min && ch < b.max;
-      }).length;
-      return { name: b.label, count, fill: b.min >= 0 ? '#16a34a' : b.max <= 0 ? '#dc2626' : '#6b7280' };
-    });
+    // Pair BUY/SELL trades and compute return for completed round-trips
+    const symbolTrades: Record<string, { buys: any[]; sells: any[] }> = {};
+    for (const t of trades) {
+      if (!symbolTrades[t.symbol]) symbolTrades[t.symbol] = { buys: [], sells: [] };
+      if (t.side === 'BUY') symbolTrades[t.symbol].buys.push(t);
+      else symbolTrades[t.symbol].sells.push(t);
+    }
+    const tradeReturns: number[] = [];
+    for (const sym of Object.keys(symbolTrades)) {
+      const { buys, sells } = symbolTrades[sym];
+      let buyIdx = 0;
+      for (const sell of sells) {
+        if (buyIdx < buys.length) {
+          const buy = buys[buyIdx];
+          const ret = ((Number(sell.price) - Number(buy.price)) / Number(buy.price)) * 100;
+          tradeReturns.push(ret);
+          buyIdx++;
+        }
+      }
+      // Remaining open buys: use current market price
+      const ticker = tickers.find((t) => t.symbol === sym);
+      const currentPrice = ticker ? parseFloat(ticker.price) : null;
+      if (currentPrice) {
+        for (let i = buyIdx; i < buys.length; i++) {
+          const ret = ((currentPrice - Number(buys[i].price)) / Number(buys[i].price)) * 100;
+          tradeReturns.push(ret);
+        }
+      }
+    }
+    const counts = buckets.map((b) => ({
+      name: b.label,
+      count: tradeReturns.filter((r) => r >= b.min && r < b.max).length,
+      fill: b.min >= 0 ? '#16a34a' : b.max <= 0 ? '#dc2626' : '#6b7280',
+    }));
     return counts;
-  }, [tickers]);
+  }, [trades, tickers]);
 
-  // Cumulative returns: portfolio value progression over last 7 days
+  // Cumulative returns: portfolio value from trade history + current prices
   const cumulativeReturns = useMemo(() => {
-    if (!holdingsWithPnl.length) return [];
-    const totalCost = holdingsWithPnl.reduce((s, h) => s + h.costBasis, 0);
-    const totalValue = holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0);
-    const days = 7;
-    const data = [];
-    const now = new Date();
-    for (let i = 0; i <= days; i++) {
-      const t = i / days;
-      const val = totalCost + (totalValue - totalCost) * (t * t);
-      const pct = totalCost > 0 ? ((val - totalCost) / totalCost) * 100 : 0;
-      const date = new Date(now.getTime() - (days - i) * 24 * 60 * 60 * 1000);
+    if (!trades.length) return [];
+    const sorted = [...trades].sort((a, b) => new Date(a.traded_at).getTime() - new Date(b.traded_at).getTime());
+    // Build cumulative P&L timeline
+    let invested = 0;
+    let realized = 0;
+    const data: any[] = [];
+    const symbolPositions: Record<string, { qty: number; cost: number }> = {};
+    for (const t of sorted) {
+      if (!symbolPositions[t.symbol]) symbolPositions[t.symbol] = { qty: 0, cost: 0 };
+      const pos = symbolPositions[t.symbol];
+      if (t.side === 'BUY') {
+        pos.qty += t.volume;
+        pos.cost += Number(t.total_value);
+        invested += Number(t.total_value);
+      } else {
+        const avgCost = pos.qty > 0 ? pos.cost / pos.qty : 0;
+        const sellVal = Number(t.total_value);
+        realized += sellVal - (avgCost * t.volume);
+        pos.qty -= t.volume;
+        pos.cost -= avgCost * t.volume;
+      }
+      const unrealized = holdingsWithPnl.reduce((s, h) => s + (h.pnl ?? 0), 0);
+      const cumPnl = realized + unrealized;
+      const pct = invested > 0 ? (cumPnl / invested) * 100 : 0;
       data.push({
-        date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        value: Math.round(val * 100) / 100,
+        date: new Date(t.traded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         pct: Math.round(pct * 100) / 100,
       });
     }
-    return data;
-  }, [holdingsWithPnl]);
+    // Add current state as final point
+    const totalUnrealized = holdingsWithPnl.reduce((s, h) => s + (h.pnl ?? 0), 0);
+    const totalInvested = trades.filter((t) => t.side === 'BUY').reduce((s, t) => s + Number(t.total_value), 0);
+    const finalPct = totalInvested > 0 ? ((realized + totalUnrealized) / totalInvested) * 100 : 0;
+    data.push({
+      date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      pct: Math.round(finalPct * 100) / 100,
+    });
+    // Return last 14 data points or all if fewer
+    return data.slice(-14);
+  }, [trades, holdingsWithPnl]);
 
   return (
     <div className="p-8 text-gray-800">
@@ -427,7 +477,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <h3 className="text-sm font-bold text-gray-700 mb-1">Cumulative Returns</h3>
-            <p className="text-[10px] text-gray-400 mb-2">Portfolio P&amp;L progression over last 7 days</p>
+            <p className="text-[10px] text-gray-400 mb-2">Cumulative P&amp;L % from trade history</p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={cumulativeReturns}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -441,7 +491,7 @@ export default function Dashboard() {
 
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <h3 className="text-sm font-bold text-gray-700 mb-1">Return Distribution</h3>
-            <p className="text-[10px] text-gray-400 mb-2">Number of stocks by today's % change range</p>
+            <p className="text-[10px] text-gray-400 mb-2">Trade returns bucketed by % gain/loss (completed + open)</p>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={returnDistribution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
