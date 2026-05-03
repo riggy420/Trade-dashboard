@@ -210,24 +210,35 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-700">Symbol</th>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-700">Name</th>
-                  <th className="text-right px-4 py-2 font-semibold text-gray-700">Shares Held</th>
-                  <th className="text-right px-4 py-2 font-semibold text-gray-700">Cost Basis</th>
-                  <th className="text-right px-4 py-2 font-semibold text-gray-700">Avg Price</th>
+                  <th className="text-left px-3 py-2 font-semibold text-gray-700">Symbol</th>
+                  <th className="text-left px-3 py-2 font-semibold text-gray-700">Name</th>
+                  <th className="text-right px-3 py-2 font-semibold text-gray-700">Shares</th>
+                  <th className="text-right px-3 py-2 font-semibold text-gray-700">Avg Buy</th>
+                  <th className="text-right px-3 py-2 font-semibold text-gray-700">Now</th>
+                  <th className="text-right px-3 py-2 font-semibold text-gray-700">P&amp;L</th>
                 </tr>
               </thead>
               <tbody>
                 {holdingsWithPnl.map((h: any) => (
                   <tr key={h.symbol} onClick={() => navigate(`/analysis/${h.symbol}`)}
                     className="border-b border-gray-100 hover:bg-blue-50 transition cursor-pointer">
-                    <td className="px-4 py-2 font-bold text-blue-600">{h.symbol}</td>
-                    <td className="px-4 py-2 text-gray-700 truncate max-w-[200px]">{h.name || '—'}</td>
-                    <td className="px-4 py-2 text-right font-semibold">{h.netPosition}</td>
-                    <td className="px-4 py-2 text-right font-semibold">{fmt(h.costBasis)}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">{fmt(h.avgBuy)}</td>
+                    <td className="px-3 py-2 font-bold text-blue-600 text-xs">{h.symbol}</td>
+                    <td className="px-3 py-2 text-gray-700 truncate max-w-[140px] text-xs">{h.name || '—'}</td>
+                    <td className="px-3 py-2 text-right text-xs font-semibold">{h.netPosition}</td>
+                    <td className="px-3 py-2 text-right text-xs text-gray-700">{fmt(h.avgBuy)}</td>
+                    <td className="px-3 py-2 text-right text-xs font-semibold">{h.currentPrice ? fmt(h.currentPrice) : '—'}</td>
+                    <td className={`px-3 py-2 text-right text-xs font-bold ${h.pnl !== null ? (h.pnl >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
+                      {h.pnl !== null ? `${h.pnl >= 0 ? '+' : ''}${fmt(h.pnl)}` : '—'}
+                    </td>
                   </tr>
                 ))}
+                <tr className="bg-gray-50 font-bold text-xs">
+                  <td colSpan={4} className="px-3 py-2 text-right text-gray-600">Total Unrealized:</td>
+                  <td className="px-3 py-2 text-right font-bold">{holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0) > 0 ? fmt(holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0)) : '—'}</td>
+                  <td className={`px-3 py-2 text-right font-bold ${unrealizedPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {hasPrices ? `${unrealizedPnl >= 0 ? '+' : ''}${fmt(unrealizedPnl)}` : '—'}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
