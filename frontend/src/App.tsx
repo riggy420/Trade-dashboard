@@ -71,7 +71,7 @@ function AppShell() {
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">★</span> Watchlist</span>
           </Link>
           <Link to="/reports" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📄</span> Reports</span>
+            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">💼</span> My Portfolio</span>
           </Link>
         </nav>
         <nav className="mb-4 text-sm border-t border-gray-100 pt-2">
