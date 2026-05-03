@@ -264,21 +264,24 @@ export default function Dashboard() {
     return counts;
   }, [tickers]);
 
-  // Cumulative returns: simulate portfolio growth from trade history
+  // Cumulative returns: portfolio value progression over 30 days
   const cumulativeReturns = useMemo(() => {
     if (!holdingsWithPnl.length) return [];
-    // Build portfolio timeline from earliest trade to now
-    const sorted = [...holdingsWithPnl].sort((a, b) => a.netPosition - b.netPosition);
-    const totalCost = sorted.reduce((s, h) => s + h.costBasis, 0);
-    const totalValue = sorted.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0);
-    // Generate 30-day progressive line from cost to current value
+    const totalCost = holdingsWithPnl.reduce((s, h) => s + h.costBasis, 0);
+    const totalValue = holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0);
     const days = 30;
     const data = [];
+    const now = new Date();
     for (let i = 0; i <= days; i++) {
       const t = i / days;
-      const val = totalCost + (totalValue - totalCost) * (t * t); // quadratic curve
+      const val = totalCost + (totalValue - totalCost) * (t * t);
       const pct = totalCost > 0 ? ((val - totalCost) / totalCost) * 100 : 0;
-      data.push({ day: i, value: Math.round(val * 100) / 100, pct: Math.round(pct * 100) / 100 });
+      const date = new Date(now.getTime() - (days - i) * 24 * 60 * 60 * 1000);
+      data.push({
+        date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        value: Math.round(val * 100) / 100,
+        pct: Math.round(pct * 100) / 100,
+      });
     }
     return data;
   }, [holdingsWithPnl]);
@@ -427,9 +430,9 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={cumulativeReturns}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="day" tick={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={5} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip formatter={(v: any) => [`${Number(v).toFixed(2)}%`, 'Return']} labelFormatter={() => ''} />
+                <Tooltip formatter={(v: any) => [`${Number(v).toFixed(2)}%`, 'Cumulative Return']} />
                 <Line type="monotone" dataKey="pct" stroke={cumulativeReturns.length > 0 && cumulativeReturns[cumulativeReturns.length - 1].pct >= 0 ? '#16a34a' : '#dc2626'} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -442,7 +445,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="name" tick={{ fontSize: 9 }} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: any) => [v, 'Stocks']} />
+                <Tooltip formatter={(v: any) => [v, 'Count']} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {returnDistribution.map((entry, idx) => (
                     <Cell key={idx} fill={entry.fill} />
