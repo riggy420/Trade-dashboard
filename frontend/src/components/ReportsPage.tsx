@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { fetchTrades, fetchPendingOrders, cancelPendingOrder, updatePendingOrder, getTickers, deleteTrade } from '../api/endpoints';
+import { fetchTrades, fetchHoldings, fetchPendingOrders, cancelPendingOrder, updatePendingOrder, getTickers, deleteTrade } from '../api/endpoints';
 import EditTradeModal from './EditTradeModal';
 
 interface Trade {
@@ -31,6 +31,7 @@ export default function ReportsPage() {
   const [editVolume, setEditVolume] = useState('');
   const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
   const [tickers, setTickers] = useState<any[]>([]);
+  const [holdings, setHoldings] = useState<any[]>([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
@@ -46,6 +47,9 @@ export default function ReportsPage() {
       .catch(() => {});
     getTickers()
       .then((data) => setTickers(data.tickers || []))
+      .catch(() => {});
+    fetchHoldings()
+      .then((data) => setHoldings(data.holdings || []))
       .catch(() => {});
   };
 
@@ -82,49 +86,39 @@ export default function ReportsPage() {
   const totalSell = trades.filter((t) => t.side === 'SELL').reduce((s, t) => s + Number(t.total_value), 0);
   const netInvested = totalBuy - totalSell;
 
-  // Compute current open positions from trades
-  const positionMap = new Map<string, { symbol: string; name: string; net: number; totalCost: number }>();
-  for (const t of trades) {
-    const key = t.symbol;
-    if (!positionMap.has(key)) {
-      positionMap.set(key, { symbol: t.symbol, name: t.name, net: 0, totalCost: 0 });
-    }
-    const pos = positionMap.get(key)!;
-    if (t.side === 'BUY') {
-      pos.net += t.volume;
-      pos.totalCost += Number(t.total_value);
-    } else {
-      pos.net -= t.volume;
-      pos.totalCost -= Number(t.total_value);
-    }
-  }
-  const openPositions = [...positionMap.values()].filter((p) => p.net > 0);
+  // Use backend-computed holdings (avg buy price, net position) — same as Dashboard
+  const holdingsWithPnl = holdings.map((h: any) => {
+    const ticker = tickers.find((t) => t.symbol === h.symbol);
+    const currentPrice = ticker ? parseFloat(ticker.price) || null : null;
+    const avgBuy = parseFloat(h.avg_buy_price) || 0;
+    const netPos = parseInt(h.net_position) || 0;
+    const marketValue = currentPrice !== null ? currentPrice * netPos : null;
+    const costBasis = avgBuy * netPos;
+    const pnl = marketValue !== null ? marketValue - costBasis : null;
+    return { ...h, currentPrice, avgBuy, netPosition: netPos, marketValue, costBasis, pnl };
+  });
 
-  // Unrealized P&L: current market value - cost basis
+  // Unrealized P&L: sum of (market value - cost basis) across all holdings
   let unrealizedPnl = 0;
   let hasPrices = false;
-  for (const pos of openPositions) {
-    const ticker = tickers.find((t) => t.symbol === pos.symbol);
-    const currentPrice = ticker ? parseFloat(ticker.price) : null;
-    if (currentPrice) {
+  for (const h of holdingsWithPnl) {
+    if (h.pnl !== null) {
       hasPrices = true;
-      unrealizedPnl += (currentPrice * pos.net) - pos.totalCost;
+      unrealizedPnl += h.pnl;
     }
   }
 
-  // Pie chart: group positions by name-simplified categories
+  // Pie chart: group holdings by category
   const pieData = useMemo(() => {
     const groups: Record<string, number> = {};
-    for (const pos of openPositions) {
-      const ticker = tickers.find((t) => t.symbol === pos.symbol);
-      const val = ticker ? (parseFloat(ticker.price) || 0) * pos.net : pos.totalCost;
-      const sym = pos.symbol;
-      // Categorize: bond ETFs end with B, mutual funds are TW000T, else stock
+    for (const h of holdingsWithPnl) {
+      const val = h.marketValue ?? h.costBasis;
+      const sym = h.symbol;
       const cat = /^\d{4,6}B/.test(sym) ? 'Bonds' : sym.startsWith('TW000T') ? 'Mutual Funds' : 'Stocks';
       groups[cat] = (groups[cat] || 0) + val;
     }
     return Object.entries(groups).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));
-  }, [openPositions, tickers]);
+  }, [holdingsWithPnl]);
 
   const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981'];
 
@@ -180,7 +174,7 @@ export default function ReportsPage() {
           </div>
           <div className="bg-white border border-gray-200 rounded p-3 shadow-sm">
             <p className="text-xs uppercase text-gray-500 font-semibold">Open Positions</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">{openPositions.length}</p>
+            <p className="text-xl font-bold text-gray-900 mt-1">{holdingsWithPnl.length}</p>
           </div>
         </div>
         {pieData.length > 0 && (
@@ -206,11 +200,11 @@ export default function ReportsPage() {
       </div>
 
       {/* Open Positions */}
-      {openPositions.length > 0 && (
+      {holdingsWithPnl.length > 0 && (
         <div className="mb-6 bg-white border border-blue-100 rounded shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-widest text-blue-600">Open Positions</span>
-            <span className="text-xs text-blue-400">{openPositions.length} holding{openPositions.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-blue-400">{holdingsWithPnl.length} holding{holdingsWithPnl.length !== 1 ? 's' : ''}</span>
           </div>
           <div className="p-0">
             <table className="w-full text-sm">
@@ -224,14 +218,14 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {openPositions.map((p) => (
-                  <tr key={p.symbol} onClick={() => navigate(`/analysis/${p.symbol}`)}
+                {holdingsWithPnl.map((h: any) => (
+                  <tr key={h.symbol} onClick={() => navigate(`/analysis/${h.symbol}`)}
                     className="border-b border-gray-100 hover:bg-blue-50 transition cursor-pointer">
-                    <td className="px-4 py-2 font-bold text-blue-600">{p.symbol}</td>
-                    <td className="px-4 py-2 text-gray-700 truncate max-w-[200px]">{p.name || '—'}</td>
-                    <td className="px-4 py-2 text-right font-semibold">{p.net}</td>
-                    <td className="px-4 py-2 text-right font-semibold">{fmt(p.totalCost)}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">{fmt(p.totalCost / p.net)}</td>
+                    <td className="px-4 py-2 font-bold text-blue-600">{h.symbol}</td>
+                    <td className="px-4 py-2 text-gray-700 truncate max-w-[200px]">{h.name || '—'}</td>
+                    <td className="px-4 py-2 text-right font-semibold">{h.netPosition}</td>
+                    <td className="px-4 py-2 text-right font-semibold">{fmt(h.costBasis)}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">{fmt(h.avgBuy)}</td>
                   </tr>
                 ))}
               </tbody>
