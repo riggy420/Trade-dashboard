@@ -340,23 +340,29 @@ export default function Dashboard() {
     <div className="p-8 text-gray-800">
       {/* Portfolio Summary — always visible */}
       <div className="mb-6">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+        <div className="grid grid-cols-4 gap-4">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <p className="text-xs uppercase text-gray-500 font-semibold tracking-wide">Portfolio Value</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{fmtNT(portfolioSummary.totalValue)}</p>
+            <p className="text-xl font-black text-gray-900 mt-1">{fmtNT(portfolioSummary.totalValue)}</p>
           </div>
-          <div className={`rounded-lg p-5 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : portfolioSummary.totalPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <div className={`rounded-lg p-4 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : portfolioSummary.totalPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
             <p className="text-xs uppercase font-semibold tracking-wide text-gray-600">Total P&amp;L</p>
-            <p className={`text-2xl font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.totalPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <p className={`text-xl font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.totalPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
               {portfolioSummary.totalPnl >= 0 ? '+' : ''}{fmtNT(portfolioSummary.totalPnl)}
             </p>
-            <p className={`text-sm font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-xs font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : portfolioSummary.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               ({portfolioSummary.pnlPct >= 0 ? '+' : ''}{portfolioSummary.pnlPct.toFixed(2)}%)
             </p>
           </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+          <div className={`rounded-lg p-4 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : (portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
+            <p className="text-xs uppercase font-semibold tracking-wide text-gray-600">Unrealized P&amp;L</p>
+            <p className={`text-xl font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : (portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+              {portfolioSummary.totalValue - portfolioSummary.totalCost >= 0 ? '+' : ''}{fmtNT(portfolioSummary.totalValue - portfolioSummary.totalCost)}
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
             <p className="text-xs uppercase text-gray-500 font-semibold tracking-wide">Holdings</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{portfolioSummary.count}</p>
+            <p className="text-xl font-black text-gray-900 mt-1">{portfolioSummary.count}</p>
             <p className="text-xs text-gray-400 mt-0.5">{portfolioSummary.count === 1 ? 'position' : 'positions'}</p>
           </div>
         </div>
