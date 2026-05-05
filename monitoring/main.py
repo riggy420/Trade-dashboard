@@ -28,6 +28,12 @@ import re
 import asyncio
 import uuid
 from datetime import datetime, timedelta
+from supervision.supervision_utils import (
+    run_supervision_scan, score_stock, scan_all_stocks,
+    refresh_scan_cache, ARTICLE_DEFINITIONS,
+    backtest_stock_30d, backtest_all_30d,
+)
+from scrape.fundamentals import fetch_fundamentals_batch, get_fundamentals
 
 app = FastAPI(title="Taiwan Stock Monitor API", description="Backend for fetching and serving stock data")
 
@@ -43,10 +49,10 @@ app.add_middleware(
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-INTRADAY_REFRESH_BATCH_SIZE = int(os.getenv("INTRADAY_REFRESH_BATCH_SIZE", "20"))
-INTRADAY_REFRESH_PAUSE_SECONDS = float(os.getenv("INTRADAY_REFRESH_PAUSE_SECONDS", "0.5"))
-HOURLY_REFRESH_INTERVAL_SECONDS = int(os.getenv("HOURLY_REFRESH_INTERVAL_SECONDS", "3600"))
-INTRADAY_STALE_THRESHOLD_SECONDS = int(os.getenv("INTRADAY_STALE_THRESHOLD_SECONDS", "3600"))
+INTRADAY_REFRESH_BATCH_SIZE = int(os.getenv("INTRADAY_REFRESH_BATCH_SIZE", "5"))
+INTRADAY_REFRESH_PAUSE_SECONDS = float(os.getenv("INTRADAY_REFRESH_PAUSE_SECONDS", "2.0"))
+INTRADAY_REFRESH_INTERVAL_SECONDS = int(os.getenv("INTRADAY_REFRESH_INTERVAL_SECONDS", "10800"))
+INTRADAY_STALE_THRESHOLD_SECONDS = int(os.getenv("INTRADAY_STALE_THRESHOLD_SECONDS", "7200"))
 
 
 def _get_latest_intraday_cache_time() -> datetime | None:
@@ -67,12 +73,6 @@ def _get_latest_intraday_cache_time() -> datetime | None:
     return datetime.fromtimestamp(os.path.getmtime(latest_path))
 
 
-def _seconds_until_next_hour() -> float:
-    now = datetime.now()
-    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-    return max(0.0, (next_hour - now).total_seconds())
-
-
 async def _bootstrap_data():
     """Ensure ticker list and a starter batch of intraday data exists on first run."""
     tickers_file = os.path.join(DATA_DIR, "twse_tickers.txt")
@@ -86,9 +86,9 @@ async def _bootstrap_data():
     # If no intraday data at all, scrape a fast starter batch
     latest = _get_latest_intraday_cache_time()
     if latest is None:
-        print("No intraday cache found — seeding with starter batch of 50 stocks...")
+        print("No intraday cache found — seeding with all available stocks...")
         try:
-            await _run_intraday_refresh(limit=50)
+            await _run_intraday_refresh()
         except Exception as e:
             print(f"Starter batch failed: {e}")
 
@@ -123,17 +123,21 @@ async def _run_intraday_refresh(limit: int | None = None, force: bool = False):
 
 
 async def _hourly_intraday_refresh_loop():
+    """Background task: refresh intraday data on a fixed interval (default 3 hours)."""
+    # Wait 2 minutes for other startup tasks to finish first
+    await asyncio.sleep(120)
     try:
         await _refresh_intraday_if_stale()
     except Exception as e:
         print(f"Initial intraday freshness check failed: {e}")
 
     while True:
-        await asyncio.sleep(_seconds_until_next_hour())
+        await asyncio.sleep(INTRADAY_REFRESH_INTERVAL_SECONDS)
         try:
+            print(f"Running scheduled intraday refresh (every {INTRADAY_REFRESH_INTERVAL_SECONDS // 3600}h)...")
             await _run_intraday_refresh()
         except Exception as e:
-            print(f"Hourly intraday refresh failed: {e}")
+            print(f"Scheduled intraday refresh failed: {e}")
 
 
 async def _ensure_sectors_cache():
@@ -147,19 +151,33 @@ async def _ensure_sectors_cache():
             print(f"Failed to regenerate sectors: {e}")
 
 
+async def _fundamentals_refresh_loop():
+    """Background task: refresh fundamentals cache every 6 hours."""
+    await asyncio.sleep(120)
+    while True:
+        try:
+            print("Refreshing fundamentals cache...")
+            fetch_fundamentals_batch()
+            print("Fundamentals cache refreshed.")
+        except Exception as e:
+            print(f"Fundamentals refresh failed: {e}")
+        await asyncio.sleep(6 * 3600)
+
+
 @app.on_event("startup")
 async def startup_tasks():
     app.state.db_pool = await create_db_pool()
     app.state.intraday_refresh_lock = asyncio.Lock()
     app.state.hourly_intraday_refresh_task = asyncio.create_task(_hourly_intraday_refresh_loop())
     app.state.pending_order_checker_task = asyncio.create_task(_pending_order_checker())
+    app.state.fundamentals_refresh_task = asyncio.create_task(_fundamentals_refresh_loop())
     asyncio.create_task(_ensure_sectors_cache())
     asyncio.create_task(_bootstrap_data())
 
 
 @app.on_event("shutdown")
 async def shutdown_tasks():
-    for task_name in ("hourly_intraday_refresh_task", "pending_order_checker_task"):
+    for task_name in ("hourly_intraday_refresh_task", "pending_order_checker_task", "fundamentals_refresh_task"):
         task = getattr(app.state, task_name, None)
         if task is not None:
             task.cancel()
@@ -327,7 +345,11 @@ def get_tickers(_user: dict = Depends(get_current_user)):
             market = "Unknown"
         else:
             symbol, name, market = line, "Unknown", "Unknown"
-            
+
+        # Skip bonds and mutual funds
+        if symbol.startswith("TW000T") or (len(symbol) >= 4 and symbol.endswith("B")):
+            continue
+
         # Prefer Redis meta, fall back to .txt intraday files
         price = "-"
         change = "-"
@@ -384,6 +406,117 @@ def get_tickers(_user: dict = Depends(get_current_user)):
     
     # Send as JSON (if you want literal zip, we can return StreamingResponse)
     return {"tickers": results}
+
+
+@app.get("/api/data/tickers-supervised")
+def get_tickers_supervised(
+    force: bool = Query(False),
+    _user: dict = Depends(get_current_user)
+):
+    """
+    Returns the ticker list with supervision scores merged in.
+    Each ticker gets a `supervision_score` (0-100) and `supervision_risk` field.
+    Set force=true to re-run the supervision scan instead of using cache.
+    """
+    # Get tickers (reuse logic from get_tickers)
+    filepath = os.path.join(DATA_DIR, "twse_tickers.txt")
+    if not os.path.exists(filepath):
+        try:
+            fetch_twse_tickers()
+        except Exception as e:
+            raise HTTPException(status_code=404, detail="Tickers not found and auto-refresh failed.")
+
+    # Load tickers (simplified - just symbols and names)
+    ticker_symbols = set()
+    with open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            parts = [p.strip() for p in line.split(",") if p.strip()]
+            if parts:
+                sym = parts[0]
+                # Skip bonds and mutual funds
+                if not sym.startswith("TW000T") and not (len(sym) >= 4 and sym.endswith("B")):
+                    ticker_symbols.add(sym)
+
+    # Load industry map
+    industry_map = {}
+    sectors_file = os.path.join(DATA_DIR, "twse_sectors.txt")
+    if os.path.exists(sectors_file):
+        try:
+            with open(sectors_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    parts = line.strip().split("\t")
+                    if len(parts) >= 3:
+                        industry_map[parts[0]] = parts[2] if len(parts) > 2 else "Unknown"
+        except Exception:
+            pass
+
+    # Get supervision scores for all scanned stocks
+    try:
+        scan_results = run_supervision_scan(force_refresh=force)
+        score_map: dict[str, dict] = {}
+        for r in scan_results:
+            score_map[r["symbol"]] = {
+                "total_score": r["total_score"],
+                "risk_level": r["risk_level"],
+                "decision": r.get("decision", "N/A"),
+                "triggered_articles": r.get("triggered_articles", []),
+            }
+    except Exception as e:
+        print(f"Supervision scan failed in tickers-supervised: {e}")
+        score_map = {}
+
+    # Build merged list
+    merged = []
+    for symbol in sorted(ticker_symbols):
+        sup = score_map.get(symbol, {})
+        merged.append({
+            "symbol": symbol,
+            "has_supervision": symbol in score_map,
+            "supervision_score": sup.get("total_score"),
+            "supervision_risk": sup.get("risk_level", "N/A"),
+            "supervision_decision": sup.get("decision"),
+            "supervision_triggered": sup.get("triggered_articles", []),
+        })
+
+    return {
+        "tickers": merged,
+        "total": len(merged),
+        "scanned": len(score_map),
+        "scan_timestamp": datetime.now().isoformat(),
+        "equations": {
+            "sector_aggregation": {
+                "description": "Sector averages are computed as the arithmetic mean of all stocks' metrics within each sector",
+                "average_change": "mean(stock.change_6d_pct) for all stocks in sector",
+                "average_volume_ratio": "mean(stock.vol_ratio_6d) for all stocks in sector",
+                "average_turnover": "mean(stock.turnover_6d) for all stocks in sector",
+                "average_pb": "mean(stock.price_to_book) for all stocks in sector with PB > 0",
+                "market_weighted_pe": "sum(PE_i * market_cap_i) / sum(market_cap_i) for all stocks with PE > 0",
+                "market_weighted_pb": "sum(PB_i * market_cap_i) / sum(market_cap_i) for all stocks with PB > 0",
+                "sector_size": "count of stocks in sector from twse_sectors.txt",
+            },
+            "article_scoring": {
+                "description": "Each article computes a 0-100 score contribution. The total score is a weighted average across all 13 articles",
+                "article_weights": {
+                    "Art 2": 2.0, "Art 3": 2.0, "Art 4": 2.5, "Art 5": 2.0,
+                    "Art 6": 0.5, "Art 7": 2.5, "Art 8": 0.5, "Art 9": 0.5,
+                    "Art 10": 1.5, "Art 11": 2.0, "Art 12": 1.5,
+                    "Art 13": 0.5, "Art 14": 0.5,
+                },
+                "score_formula": "total = clamp(sum(score_i * weight_i) / sum(weight_i), 0, 100)",
+                "risk_levels": {
+                    "CRITICAL": "total_score >= 70",
+                    "HIGH": "45 <= total_score < 70",
+                    "MEDIUM": "20 <= total_score < 45",
+                    "LOW": "total_score < 20",
+                },
+            },
+            "market_divergence": {
+                "description": "Market/sector divergence measures how much a stock's metric differs from the market or sector average",
+                "formula": "|stock_metric - market_avg_metric| or |stock_metric - sector_avg_metric|",
+                "example": "If stock 6d change = 40% and sector avg = 10%, divergence = |40 - 10| = 30 percentage points",
+            },
+        },
+    }
 
 
 @app.get("/api/analysis/{ticker}")
@@ -719,6 +852,112 @@ def get_index_constituents_endpoint(sector_or_index: str, _user: dict = Depends(
 
 
 # ---------------------------------------------------------------------------
+# Supervision endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/supervision/scan")
+def get_supervision_scan(
+    limit: int = Query(50, ge=1, le=500),
+    min_score: float = Query(0, ge=0, le=100),
+    risk_level: str = Query(None),
+    force: bool = Query(False),
+    _user: dict = Depends(get_current_user)
+):
+    """
+    Run full supervision scan across all stocks with cached data.
+    Returns stocks sorted by total_score descending.
+    Set force=true to bypass the in-memory cache and recompute.
+    """
+    try:
+        results = run_supervision_scan(force_refresh=force)
+
+        # Filter
+        if min_score > 0:
+            results = [r for r in results if r["total_score"] >= min_score]
+        if risk_level:
+            results = [r for r in results if r["risk_level"] == risk_level.upper()]
+
+        total = len(results)
+        results = results[:limit]
+
+        # Count by risk level
+        risk_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+        for r in results:
+            rl = r.get("risk_level", "UNKNOWN")
+            risk_counts[rl] = risk_counts.get(rl, 0) + 1
+
+        return {
+            "scan_timestamp": datetime.now().isoformat(),
+            "total_scanned": total,
+            "returned": len(results),
+            "risk_counts": risk_counts,
+            "stocks": results,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supervision scan failed: {str(e)}")
+
+
+@app.get("/api/supervision/{symbol}")
+def get_supervision_detail(
+    symbol: str,
+    _user: dict = Depends(get_current_user)
+):
+    """
+    Get detailed supervision analysis for a single symbol.
+    Returns full article-by-article breakdown.
+    """
+    try:
+        result = score_stock(symbol)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supervision analysis failed: {str(e)}")
+
+
+@app.post("/api/supervision/refresh-cache")
+def refresh_supervision_cache(
+    _user: dict = Depends(get_current_user)
+):
+    """Force refresh the in-memory supervision scan cache."""
+    try:
+        refresh_scan_cache()
+        return {"status": "success", "message": "Supervision cache cleared. Next scan will recompute."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/supervision/articles")
+def get_supervision_articles():
+    """Return definitions and thresholds for all 14 supervision articles."""
+    return {"articles": ARTICLE_DEFINITIONS, "total_articles": len(ARTICLE_DEFINITIONS)}
+
+
+@app.get("/api/supervision/backtest-30d")
+def get_backtest_30d(
+    symbol: str = Query(None),
+    _user: dict = Depends(get_current_user)
+):
+    """
+    30-day backtest. If symbol is provided, returns daily detail for that stock.
+    Otherwise returns a summary for all stocks, flagging any that triggered in the window.
+    """
+    try:
+        if symbol:
+            result = backtest_stock_30d(symbol)
+            return result
+        else:
+            results = backtest_all_30d()
+            flagged = [r for r in results if r["flagged_30d"]]
+            return {
+                "total": len(results),
+                "flagged_count": len(flagged),
+                "flagged": flagged,
+                "all": results,
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backtest failed: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
 # Watchlist endpoints
 # ---------------------------------------------------------------------------
 
@@ -916,8 +1155,9 @@ async def _pending_order_checker():
 
 
 @app.get("/api/fundamentals/{symbol}")
-def get_fundamentals(symbol: str, _user: dict = Depends(get_current_user)):
-    """Return cached P/E, ROE, EPS, Beta, Market Cap for a symbol."""
+def get_fundamentals_endpoint(symbol: str, _user: dict = Depends(get_current_user)):
+    """Return cached fundamentals (P/E, P/B, shares outstanding, etc.) for a symbol."""
+    # Try Redis first
     try:
         from redis import Redis as SyncRedis
         r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True, socket_connect_timeout=2)
@@ -927,8 +1167,38 @@ def get_fundamentals(symbol: str, _user: dict = Depends(get_current_user)):
             return json.loads(raw)
     except Exception:
         pass
-    # Return empty if not cached
-    return {"symbol": symbol, "pe": None, "roe": None, "eps": None, "beta": None, "market_cap": None}
+    # Fall back to file cache
+    try:
+        result = get_fundamentals(symbol, use_cache=True)
+        if result:
+            return result
+    except Exception:
+        pass
+    return {"symbol": symbol, "pe": None, "pb": None,
+            "shares_outstanding": None, "market_cap": None, "beta": None}
+
+
+@app.post("/api/refresh/fundamentals")
+def refresh_fundamentals(force: bool = Query(False), _user: dict = Depends(get_current_user)):
+    """Fetch and cache fundamentals (P/E, P/B, shares outstanding) for all tickers."""
+    try:
+        results = fetch_fundamentals_batch(force_refresh=force)
+        return {"status": "success", "count": len(results),
+                "message": f"Fundamentals cached for {len(results)} tickers"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/refresh/fundamentals/{symbol}")
+def refresh_single_fundamentals(symbol: str, _user: dict = Depends(get_current_user)):
+    """Fetch and cache fundamentals for a single symbol. Used as trap door when analysis page has no data."""
+    try:
+        result = get_fundamentals(symbol, use_cache=False)
+        if result:
+            return {"status": "success", "symbol": symbol, "data": result}
+        return {"status": "empty", "symbol": symbol, "message": "No fundamentals data available from yfinance"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/data/index-history/{index_name}")

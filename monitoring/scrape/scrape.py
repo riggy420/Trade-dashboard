@@ -172,6 +172,17 @@ BOND_ETF_TICKERS = [
 ]
 
 
+def is_bond_or_fund(symbol: str, name: str = "") -> bool:
+    """Return True if the symbol is a bond ETF or mutual fund that should be skipped."""
+    if symbol.startswith("TW000T"):
+        return True
+    if len(symbol) >= 4 and (symbol.endswith("B") or symbol.endswith("b")):
+        return True
+    if name and ("bond" in name.lower() or "treasury" in name.lower()):
+        return True
+    return False
+
+
 def _parse_ticker_cache_line(line: str) -> tuple[str, str, str | None]:
     parts = [part.strip() for part in line.split(",") if part.strip()]
     if len(parts) >= 3:
@@ -213,18 +224,16 @@ def fetch_twse_tickers() -> list:
     # Remove duplicates and sort
     tickers = sorted([(symbol, meta[0], meta[1]) for symbol, meta in tickers.items()], key=lambda item: item[0])
 
-    # Limit TW stocks for fast bootstrapping (env: TICKER_LIMIT=50 = 50 stocks)
-    ticker_limit = int(os.getenv("TICKER_LIMIT", "50"))
+    # Limit TW stocks for fast bootstrapping (set TICKER_LIMIT=0 for all stocks)
+    ticker_limit = int(os.getenv("TICKER_LIMIT", "0"))
     if ticker_limit > 0:
         tickers = tickers[:ticker_limit]
 
-    # Append bond ETF tickers (not covered by ISIN page scraper)
-    for bond in BOND_ETF_TICKERS:
-        tickers.append(bond)
-
-    # Append mutual fund ISINs (not covered by ISIN page scraper)
-    for fund_isin, fund_name, fund_market in MUTUAL_FUND_ISINS:
-        tickers.append((fund_isin, fund_name, fund_market))
+    # Bonds and mutual funds are skipped (not needed for disposition monitoring)
+    # for bond in BOND_ETF_TICKERS:
+    #     tickers.append(bond)
+    # for fund_isin, fund_name, fund_market in MUTUAL_FUND_ISINS:
+    #     tickers.append((fund_isin, fund_name, fund_market))
 
     # Save the list to a text file for reference
     list_path = os.path.join(DATA_DIR, "twse_tickers.txt")
@@ -451,6 +460,8 @@ async def fetch_all_intraday(limit=None, batch_size: int = 20, pause_seconds: in
     Uses ThreadPoolExecutor to run yfinance fetching asynchronously in batches.
     """
     tickers = fetch_twse_tickers()
+    # Skip bonds and mutual funds
+    tickers = [t for t in tickers if not is_bond_or_fund(t[0] if isinstance(t, tuple) else t)]
     if limit:
         tickers = tickers[:limit]
 

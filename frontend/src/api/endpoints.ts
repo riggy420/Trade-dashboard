@@ -116,7 +116,52 @@ export const fetchFundamentals = async (symbol: string) => {
   return response.data;
 };
 
-// 8. Watchlist
+export const refreshSingleFundamentals = async (symbol: string) => {
+  const response = await api.post(`/refresh/fundamentals/${encodeURIComponent(symbol)}`);
+  return response.data;
+};
+
+// 8. Supervision
+export const fetchTickersSupervised = async (force?: boolean) => {
+  const params = force ? '?force=true' : '';
+  const response = await api.get(`/data/tickers-supervised${params}`);
+  return response.data;
+};
+
+
+export const fetchSupervisionScan = async (limit?: number, minScore?: number, riskLevel?: string, force?: boolean) => {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set('limit', String(limit));
+  if (minScore !== undefined) params.set('min_score', String(minScore));
+  if (riskLevel) params.set('risk_level', riskLevel);
+  if (force) params.set('force', 'true');
+  const qs = params.toString();
+  const response = await api.get(`/supervision/scan${qs ? '?' + qs : ''}`);
+  return response.data;
+};
+
+export const fetchSupervisionDetail = async (symbol: string) => {
+  const response = await api.get(`/supervision/${encodeURIComponent(symbol)}`);
+  return response.data;
+};
+
+export const refreshSupervisionCache = async () => {
+  const response = await api.post(`/supervision/refresh-cache`);
+  return response.data;
+};
+
+export const fetchSupervisionArticles = async () => {
+  const response = await api.get(`/supervision/articles`);
+  return response.data;
+};
+
+export const fetchBacktest30d = async (symbol?: string) => {
+  const params = symbol ? `?symbol=${encodeURIComponent(symbol)}` : '';
+  const response = await api.get(`/supervision/backtest-30d${params}`);
+  return response.data;
+};
+
+// 9. Watchlist
 export const fetchWatchlist = async () => {
   const response = await api.get(`/watchlist`);
   return response.data;
@@ -131,7 +176,7 @@ export const removeFromWatchlist = async (symbol: string) => {
   await api.delete(`/watchlist/${encodeURIComponent(symbol)}`);
 };
 
-// 9. Trades
+// 10. Trades
 export const submitTrade = async (symbol: string, name: string, side: string, type: string, price: number, volume: number, limitPrice?: number, assetType?: string) => {
   const response = await api.post(`/trades`, { symbol, name, side, type, price, volume, limit_price: limitPrice ?? null, asset_type: assetType ?? 'stock' });
   return response.data;

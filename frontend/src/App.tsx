@@ -106,12 +106,12 @@ function AppShell() {
           <Link to="/analysis/all" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📋</span> All Stocks</span>
           </Link>
-          <Link to="/analysis/bonds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
+          {/* <Link to="/analysis/bonds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">💰</span> Bonds</span>
           </Link>
           <Link to="/analysis/funds" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
-            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📊</span> Mutual Funds</span>
-          </Link>
+            <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">📊</span> Mutual Funds</span> */}
+          {/* </Link> */}
           <Link to="/watchlist" className="block py-3 px-6 hover:bg-gray-50 border-l-4 border-transparent text-gray-600 transition">
             <span className="flex items-center"><span className="text-gray-400 mr-2 text-lg">★</span> Watchlist</span>
           </Link>

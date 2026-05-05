@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers, refreshIntraday, fetchPosition, fetchFundamentals } from '../api/endpoints';
+import { fetchAnalysisData, getTickers, refreshAllIntradayData, refreshTickers, refreshIntraday, fetchPosition, fetchFundamentals, fetchTickersSupervised, fetchSupervisionDetail, refreshSingleFundamentals, fetchBacktest30d } from '../api/endpoints';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import TradeModal from './TradeModal';
 import { useWatchlist } from '../context/WatchlistContext';
@@ -72,12 +72,17 @@ export default function MarketAnalysis() {
   // Current position for this ticker
   const [currentPosition, setCurrentPosition] = useState<number | null>(null);
   const [fundamentals, setFundamentals] = useState<any>(null);
+  const [supervisionDetail, setSupervisionDetail] = useState<any>(null);
+  const [backtestData, setBacktestData] = useState<any>(null);
+  const [backtestFlags, setBacktestFlags] = useState<Set<string>>(new Set());
   // Taiwan Board table
   const [tickers, setTickers] = useState<any[]>([]);
   const [tickerSearch, setTickerSearch] = useState('');
   const [tickerSortField, setTickerSortField] = useState<'symbol' | 'name' | 'price' | 'change' | 'industry' | null>('symbol');
   const [tickerSortOrder, setTickerSortOrder] = useState<'asc' | 'desc'>('asc');
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [supervisionScores, setSupervisionScores] = useState<Map<string, any>>(new Map());
+  const [supervisionLoading, setSupervisionLoading] = useState(false);
   const [nextRefresh, setNextRefresh] = useState<number | null>(null);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { isWatched, toggleWatchlist } = useWatchlist();
@@ -241,21 +246,85 @@ export default function MarketAnalysis() {
     loadData();
   }, [activeTicker, isAllStocks]);
 
-  // Fetch current position + fundamentals for this ticker
+  // Fetch current position + fundamentals + supervision for this ticker
   useEffect(() => {
     if (isOverview) return;
+    setFundamentals(null);
+    setSupervisionDetail(null);
     fetchPosition(activeTicker)
       .then((data) => setCurrentPosition(data.net_position ?? 0))
       .catch(() => setCurrentPosition(0));
     fetchFundamentals(activeTicker)
-      .then((data) => setFundamentals(data))
+      .then(async (data) => {
+        // Trap door: if fundamentals missing, fetch on demand for this symbol
+        if (!data || data.pe === null || data.pe === undefined) {
+          try {
+            await refreshSingleFundamentals(activeTicker);
+            const fresh = await fetchFundamentals(activeTicker);
+            setFundamentals(fresh);
+          } catch {
+            setFundamentals(data);
+          }
+        } else {
+          setFundamentals(data);
+        }
+      })
       .catch(() => setFundamentals(null));
+    fetchSupervisionDetail(activeTicker)
+      .then((data) => setSupervisionDetail(data))
+      .catch(() => setSupervisionDetail(null));
+    fetchBacktest30d(activeTicker)
+      .then((data) => setBacktestData(data))
+      .catch(() => setBacktestData(null));
   }, [activeTicker, isOverview]);
+
+  // Backtest flags for the overview table (loaded once)
+  useEffect(() => {
+    fetchBacktest30d().then((data) => {
+      const flagged30d = new Set<string>();
+      for (const r of (data.flagged || [])) {
+        if (r.flagged_30d) flagged30d.add(r.symbol);
+      }
+      setBacktestFlags(flagged30d);
+    }).catch(() => {});
+  }, [isOverview]);
+
+  const fetchSupervisionScores = async (force?: boolean) => {
+    setSupervisionLoading(true);
+    try {
+      const data = await fetchTickersSupervised(force);
+      const map = new Map<string, any>();
+      for (const t of (data.tickers || [])) {
+        if (t.has_supervision) {
+          map.set(t.symbol, {
+            score: t.supervision_score,
+            risk: t.supervision_risk,
+            decision: t.supervision_decision,
+            triggered: t.supervision_triggered,
+          });
+        }
+      }
+      setSupervisionScores(map);
+      // Also refresh backtest flags
+      try {
+        const bt = await fetchBacktest30d();
+        const flagged30d = new Set<string>();
+        for (const r of (bt.flagged || [])) {
+          if (r.flagged_30d) flagged30d.add(r.symbol);
+        }
+        setBacktestFlags(flagged30d);
+      } catch {}
+    } catch (e) {
+      console.error("Failed to load supervision scores:", e);
+    }
+    setSupervisionLoading(false);
+  };
 
   const fetchTickersData = () => {
     getTickers()
       .then((data) => setTickers(data.tickers || []))
       .catch(() => {});
+    fetchSupervisionScores();
   };
 
   useEffect(() => {
@@ -271,6 +340,7 @@ export default function MarketAnalysis() {
       await refreshTickers();
     } catch {}
     fetchTickersData();
+    if (force) fetchSupervisionScores(true);
   };
 
   // Immediate refresh when landing on an overview page
@@ -395,7 +465,12 @@ export default function MarketAnalysis() {
           )}
           <button type="button" onClick={() => { doRefresh(true); }}
             className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded transition">
-            ↻ Refresh Now
+            ↻ Refresh Prices
+          </button>
+          <button type="button" onClick={() => { fetchSupervisionScores(true); }}
+            disabled={supervisionLoading}
+            className="text-xs font-semibold px-3 py-1 rounded transition bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+            {supervisionLoading ? 'Scanning...' : '⟳ Refresh Risk'}
           </button>
           <button type="button" onClick={() => setAutoRefresh(!autoRefresh)}
             className={`text-xs font-semibold px-3 py-1 rounded transition ${
@@ -420,6 +495,14 @@ export default function MarketAnalysis() {
               <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('industry')}>INDUSTRY {tickerSortIcon('industry')}</th>
               <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('price')}>PRICE {tickerSortIcon('price')}</th>
               <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('change')}>CHANGE {tickerSortIcon('change')}</th>
+              <th className="py-2 px-2 font-semibold text-center text-[11px]">
+                DISPOSITION RISK
+                <span className="block text-[9px] text-gray-400 font-normal">score / level</span>
+              </th>
+              <th className="py-2 px-2 font-semibold text-center text-[11px]">
+                FLAGGED 30D
+                <span className="block text-[9px] text-gray-400 font-normal">any trigger</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -440,9 +523,44 @@ export default function MarketAnalysis() {
                 <td className="py-3 px-2 text-gray-700 text-sm">{t.industry || 'Unknown'}</td>
                 <td className="py-3 px-2 font-semibold text-right">{t.price}</td>
                 <td className={`py-3 px-2 font-semibold text-right ${t.change?.includes('+') ? 'text-green-600' : t.change?.includes('-') ? 'text-red-600' : 'text-gray-400'}`}>{t.change}</td>
+                <td className="py-3 px-2 text-center">
+                  {(() => {
+                    const sup = supervisionScores.get(t.symbol);
+                    if (!sup) return <span className="text-gray-300 text-xs">—</span>;
+                    const riskColor = sup.risk === 'CRITICAL' ? 'text-red-600' :
+                                      sup.risk === 'HIGH' ? 'text-orange-600' :
+                                      sup.risk === 'MEDIUM' ? 'text-yellow-600' :
+                                      'text-green-600';
+                    const barColor = sup.score >= 70 ? 'bg-red-500' :
+                                     sup.score >= 45 ? 'bg-orange-500' :
+                                     sup.score >= 20 ? 'bg-yellow-500' :
+                                     'bg-green-400';
+                    return (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex items-center gap-1">
+                          <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, sup.score || 0)}%` }} />
+                          </div>
+                          <span className="text-[10px] font-bold">{sup.score ?? '—'}</span>
+                        </div>
+                        <span className={`text-[9px] font-semibold ${riskColor}`}>{sup.risk}</span>
+                      </div>
+                    );
+                  })()}
+                </td>
+                <td className="py-3 px-2 text-center">
+                  {backtestFlags.has(t.symbol) ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      YES
+                    </span>
+                  ) : (
+                    <span className="text-gray-300 text-xs">—</span>
+                  )}
+                </td>
               </tr>
             )) : (
-              <tr><td colSpan={6} className="py-4 text-center text-gray-500">No stocks found.</td></tr>
+              <tr><td colSpan={8} className="py-4 text-center text-gray-500">No stocks found.</td></tr>
             )}
           </tbody>
         </table>
@@ -598,6 +716,155 @@ export default function MarketAnalysis() {
                <div className="text-[10px] uppercase text-gray-500">Market Cap</div>
                <div className="text-sm font-bold">{fundamentals.market_cap ? `${(fundamentals.market_cap / 1e9).toFixed(1)}B` : '—'}</div>
              </div>
+           </div>
+         )}
+
+         {/* Supervision / Disposition Risk Card */}
+         {supervisionDetail && supervisionDetail.risk_level !== 'UNKNOWN' && (
+           <div className={`border rounded-lg p-4 shadow-sm ${
+             supervisionDetail.risk_level === 'CRITICAL' ? 'border-red-300 bg-red-50' :
+             supervisionDetail.risk_level === 'HIGH' ? 'border-orange-300 bg-orange-50' :
+             supervisionDetail.risk_level === 'MEDIUM' ? 'border-yellow-300 bg-yellow-50' :
+             'border-green-300 bg-green-50'
+           }`}>
+             <div className="flex items-center justify-between mb-3">
+               <div>
+                 <span className="text-xs font-bold uppercase tracking-wider text-gray-600">Disposition Risk</span>
+                 <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded ${
+                   supervisionDetail.risk_level === 'CRITICAL' ? 'bg-red-200 text-red-800' :
+                   supervisionDetail.risk_level === 'HIGH' ? 'bg-orange-200 text-orange-800' :
+                   supervisionDetail.risk_level === 'MEDIUM' ? 'bg-yellow-200 text-yellow-800' :
+                   'bg-green-200 text-green-800'
+                 }`}>{supervisionDetail.risk_level}</span>
+                 <span className="ml-2 text-xs text-gray-500">Decision: <b>{supervisionDetail.decision || 'N/A'}</b></span>
+               </div>
+               <div className="flex items-center gap-2">
+                 <div className="w-24 h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                   <div className={`h-full rounded-full transition-all ${
+                     supervisionDetail.total_score >= 70 ? 'bg-red-500' :
+                     supervisionDetail.total_score >= 45 ? 'bg-orange-500' :
+                     supervisionDetail.total_score >= 20 ? 'bg-yellow-500' :
+                     'bg-green-500'
+                   }`} style={{ width: `${Math.min(100, supervisionDetail.total_score)}%` }} />
+                 </div>
+                 <span className="text-sm font-black">{supervisionDetail.total_score}</span>
+               </div>
+             </div>
+
+             {/* Triggered articles */}
+             {(supervisionDetail.triggered_articles || []).length > 0 && (
+               <div className="flex gap-1.5 flex-wrap mb-2">
+                 {(supervisionDetail.triggered_articles || []).map((art: string) => (
+                   <span key={art} className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">{art}</span>
+                 ))}
+               </div>
+             )}
+
+             {/* Safe harbor */}
+             {supervisionDetail.safe_harbor && (
+               <p className="text-xs text-green-700 mb-2">
+                 Safe Harbor active: {(supervisionDetail.safe_harbor_reasons || []).join(', ')}
+               </p>
+             )}
+
+             {/* Article breakdown */}
+             <details className="text-xs mt-2">
+               <summary className="cursor-pointer text-gray-600 hover:text-gray-900 font-medium">
+                 Article-by-Article Breakdown ({(supervisionDetail.signals || []).length} articles)
+               </summary>
+               <div className="mt-2 space-y-1.5 max-h-64 overflow-y-auto">
+                 {(supervisionDetail.signals || []).map((s: any) => (
+                   <div key={s.article} className={`flex items-center justify-between px-2 py-1.5 rounded ${
+                     s.triggered ? 'bg-red-50 border border-red-100' : 'bg-white border border-gray-100'
+                   }`}>
+                     <div className="flex items-center gap-2">
+                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                         s.fully_computed ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'
+                       }`}>{s.article}</span>
+                       <span className="text-gray-600">{s.description}</span>
+                       {!s.fully_computed && (
+                         <span className="text-[9px] text-gray-400 italic" title={s.caveat}>stub</span>
+                       )}
+                     </div>
+                     <div className="flex items-center gap-2 shrink-0">
+                       <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                         <div className={`h-full rounded-full ${s.triggered ? 'bg-red-500' : 'bg-gray-300'}`}
+                           style={{ width: `${Math.min(100, s.score_contribution)}%` }} />
+                       </div>
+                       <span className={`font-bold text-[10px] ${s.triggered ? 'text-red-600' : 'text-gray-400'}`}>
+                         {s.score_contribution}
+                       </span>
+                       {s.triggered ? <span className="text-green-600 font-bold">✓</span> : <span className="text-gray-300">—</span>}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </details>
+           </div>
+         )}
+
+         {/* 30-day Backtest */}
+         {backtestData && backtestData.backtest_days > 0 && (
+           <div className={`border rounded-lg p-4 shadow-sm ${
+             backtestData.flagged_30d ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+           }`}>
+             <div className="flex items-center justify-between mb-3">
+               <div>
+                 <span className="text-xs font-bold uppercase tracking-wider text-gray-600">30-Day Backtest</span>
+                 {backtestData.flagged_30d ? (
+                   <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded bg-red-200 text-red-800">
+                     FLAGGED — {backtestData.triggered_days} day{backtestData.triggered_days !== 1 ? 's' : ''}
+                   </span>
+                 ) : (
+                   <span className="ml-2 text-xs text-gray-500">No triggers in last 30 days</span>
+                 )}
+               </div>
+               <span className="text-xs text-gray-400">
+                 Max score: <b>{backtestData.max_score_30d}</b> · {backtestData.backtest_days} trading days
+               </span>
+             </div>
+
+             {/* Mini sparkline of daily scores */}
+             {backtestData.daily && backtestData.daily.length > 0 && (
+               <div className="flex items-end gap-0.5 h-12">
+                 {backtestData.daily.map((d: any, i: number) => {
+                   const h = Math.max(2, (d.total_score / 100) * 48);
+                   const color = d.triggered.length > 0 ? 'bg-red-500' :
+                                 d.total_score >= 70 ? 'bg-red-400' :
+                                 d.total_score >= 45 ? 'bg-orange-400' :
+                                 d.total_score >= 20 ? 'bg-yellow-400' :
+                                 'bg-gray-300';
+                   return (
+                     <div
+                       key={i}
+                       className={`flex-1 rounded-sm ${color} transition-all hover:opacity-80`}
+                       style={{ height: `${h}px` }}
+                       title={`${d.date}: score=${d.total_score} ${d.triggered.length ? 'TRIGGERED: ' + d.triggered.join(', ') : ''}`}
+                     />
+                   );
+                 })}
+               </div>
+             )}
+
+             {/* Triggered days detail */}
+             {backtestData.flagged_30d && (
+               <details className="text-xs mt-2">
+                 <summary className="cursor-pointer text-gray-600 hover:text-gray-900 font-medium">
+                   Triggered Days Detail ({(backtestData.daily || []).filter((d: any) => d.triggered.length > 0).length} days)
+                 </summary>
+                 <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                   {(backtestData.daily || [])
+                     .filter((d: any) => d.triggered.length > 0)
+                     .map((d: any, i: number) => (
+                       <div key={i} className="flex justify-between items-center bg-red-50 border border-red-100 px-2 py-1 rounded">
+                         <span className="font-medium">{d.date}</span>
+                         <span className="font-bold text-red-700">Score: {d.total_score}</span>
+                         <span className="text-red-600">{d.triggered.join(', ')}</span>
+                       </div>
+                     ))}
+                 </div>
+               </details>
+             )}
            </div>
          )}
       </div>

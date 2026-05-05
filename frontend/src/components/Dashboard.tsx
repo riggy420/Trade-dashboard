@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory, fetchTrades } from '../api/endpoints';
+import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory, fetchTrades, fetchSupervisionScan, refreshSupervisionCache } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -26,6 +26,10 @@ export default function Dashboard() {
   const { addNotification } = useNotifications();
   const [tickers, setTickers] = useState<any[]>([]);
   const prevPricesRef = useRef<Map<string, number>>(new Map());
+  const [supervisionAlerts, setSupervisionAlerts] = useState<any[]>([]);
+  const [supervisionLoading, setSupervisionLoading] = useState(false);
+  const [supervisionSummary, setSupervisionSummary] = useState<any>(null);
+  const [supervisionExpanded, setSupervisionExpanded] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -64,9 +68,30 @@ export default function Dashboard() {
     }
   };
 
+  const fetchSupervisionAlerts = async (force?: boolean) => {
+    setSupervisionLoading(true);
+    try {
+      const data = await fetchSupervisionScan(20, 0, undefined, force);
+      setSupervisionAlerts(data.stocks || []);
+      setSupervisionSummary({
+        risk_counts: data.risk_counts,
+        total_scanned: data.total_scanned,
+        scan_timestamp: data.scan_timestamp,
+      });
+    } catch (e) {
+      console.error("Failed to load supervision scan:", e);
+    }
+    setSupervisionLoading(false);
+  };
+
+  const handleRefreshSupervision = async () => {
+    await refreshSupervisionCache();
+    await fetchSupervisionAlerts(true);
+  };
+
   const refreshLiveData = () => {
     fetchIndicesData();
-    // fetchSupervisionAlerts();
+    fetchSupervisionAlerts();
     getTickers().then((data) => {
       const newTickers = data.tickers || [];
       setTickers(newTickers);
@@ -85,16 +110,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  // const fetchSupervisionAlerts = async () => {
-  //   setSupervisionLoading(true);
-  //   try {
-  //     const data = await fetchSupervisionScan();
-  //     setSupervisionAlerts(data.stocks || []);
-  //   } catch (e) {
-  //     console.error("Failed to load supervision scan:", e);
-  //   }
-  //   setSupervisionLoading(false);
-  // };
+
 
   const fetchIndicesData = async () => {
     try {
@@ -780,6 +796,185 @@ export default function Dashboard() {
             ))
           ) : (
             <p className="text-gray-500 text-sm">No sector data loaded.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Supervision / Disposition Alerts */}
+      <div className="mb-8 border border-gray-200 rounded shadow-sm bg-white p-4">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="font-bold text-lg">Disposition Risk Monitor</h2>
+            <p className="text-xs text-gray-500">
+              TWSE monitoring rule alerts — stocks flagged for potential disposition/attention
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {supervisionSummary && (
+              <span className="text-xs text-gray-400">
+                {supervisionSummary.total_scanned} scanned · {new Date(supervisionSummary.scan_timestamp).toLocaleTimeString()}
+              </span>
+            )}
+            <button
+              onClick={handleRefreshSupervision}
+              disabled={supervisionLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition disabled:opacity-50"
+            >
+              {supervisionLoading ? 'Scanning...' : 'Refresh Now'}
+            </button>
+          </div>
+        </div>
+
+        {/* Risk summary bar */}
+        {supervisionSummary && (
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {Object.entries(supervisionSummary.risk_counts || {}).map(([level, count]) => (
+              <div key={level} className={`px-3 py-1 rounded text-xs font-bold ${
+                level === 'CRITICAL' ? 'bg-red-100 text-red-700 border border-red-200' :
+                level === 'HIGH' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                'bg-gray-100 text-gray-500 border border-gray-200'
+              }`}>
+                {level}: {count as number}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Alert list */}
+        {supervisionAlerts.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b-2 border-gray-200">
+                <tr className="text-gray-600 text-xs">
+                  <th className="text-left py-2 px-3 font-semibold">Symbol</th>
+                  <th className="text-left py-2 px-3 font-semibold">Name</th>
+                  <th className="text-center py-2 px-3 font-semibold">Risk Score</th>
+                  <th className="text-center py-2 px-3 font-semibold">Risk Level</th>
+                  <th className="text-center py-2 px-3 font-semibold">Decision</th>
+                  <th className="text-left py-2 px-3 font-semibold">Triggered Articles</th>
+                  <th className="text-center py-2 px-3 font-semibold">Safe Harbor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {supervisionAlerts.map((alert: any) => (
+                  <tr
+                    key={alert.symbol}
+                    className="border-b hover:bg-gray-50 cursor-pointer transition"
+                    onClick={() => navigate(`/analysis/${alert.symbol}`)}
+                  >
+                    <td className="py-2 px-3 font-bold text-blue-600">{alert.symbol}</td>
+                    <td className="py-2 px-3 text-gray-700 truncate max-w-[160px]">{alert.name || 'Unknown'}</td>
+                    <td className="py-2 px-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              alert.total_score >= 70 ? 'bg-red-500' :
+                              alert.total_score >= 45 ? 'bg-orange-500' :
+                              alert.total_score >= 20 ? 'bg-yellow-500' :
+                              'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min(100, alert.total_score)}%` }}
+                          />
+                        </div>
+                        <span className="font-bold text-xs">{alert.total_score}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                        alert.risk_level === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                        alert.risk_level === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                        alert.risk_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>
+                        {alert.risk_level}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-center text-xs">{alert.decision || 'N/A'}</td>
+                    <td className="py-2 px-3">
+                      <div className="flex gap-1 flex-wrap">
+                        {(alert.triggered_articles || []).map((art: string) => (
+                          <span key={art} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">{art}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-center text-xs">
+                      {alert.safe_harbor ? (
+                        <span className="text-green-600 font-medium" title={(alert.safe_harbor_reasons || []).join(', ')}>
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 italic text-center py-4">
+            {supervisionLoading ? 'Running supervision scan...' : 'No stocks flagged — all clear.'}
+          </p>
+        )}
+
+        {/* Equations & methodology toggle */}
+        <div className="mt-4 pt-3 border-t border-gray-100">
+          <button
+            onClick={() => setSupervisionExpanded(!supervisionExpanded)}
+            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+          >
+            {supervisionExpanded ? 'Hide' : 'Show'} Scoring Methodology &amp; Equations
+          </button>
+          {supervisionExpanded && (
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-600 bg-gray-50 rounded p-4">
+              <div>
+                <h4 className="font-bold text-gray-700 mb-1">Article Scoring Formula</h4>
+                <p className="mb-2">Total risk score is a weighted average across all 13 articles:</p>
+                <pre className="bg-white border rounded p-2 text-[11px] overflow-x-auto">
+{`total = clamp( sum(score_i * weight_i) / sum(weight_i), 0, 100 )
+
+Weights: Art 2=2.0  Art 3=2.0  Art 4=2.5  Art 5=2.0
+         Art 6=0.5  Art 7=2.5  Art 8=0.5  Art 9=0.5
+         Art 10=1.5 Art 11=2.0 Art 12=1.5
+         Art 13=0.5 Art 14=0.5`}
+                </pre>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-700 mb-1">Sector Aggregation</h4>
+                <p className="mb-2">Market and sector averages used for divergence checks:</p>
+                <pre className="bg-white border rounded p-2 text-[11px] overflow-x-auto">
+{`Sector avg change = mean(change_i) for all stocks in sector
+Market avg change = mean(change_i) for all stocks scanned
+Weighted PE = sum(PE_i * cap_i) / sum(cap_i)
+Weighted PB = sum(PB_i * cap_i) / sum(cap_i)
+
+Divergence = |stock_metric - sector_avg|
+e.g. |40% - 10%| = 30pp divergence`}
+                </pre>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-700 mb-1">Risk Level Thresholds</h4>
+                <pre className="bg-white border rounded p-2 text-[11px]">
+{`CRITICAL  score >= 70
+HIGH      45 <= score < 70
+MEDIUM    20 <= score < 45
+LOW       score < 20`}
+                </pre>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-700 mb-1">Safe Harbor (Exemption) Rules</h4>
+                <pre className="bg-white border rounded p-2 text-[11px]">
+{`- Price < NT$5
+- Volume < 500 units
+- Intraday turnover < 0.1%
+- Sector < 5 stocks
+- Derivative/ETF/Warrant/Bond
+- Negative PE or PE >= 60x (Art 5)`}
+                </pre>
+              </div>
+            </div>
           )}
         </div>
       </div>

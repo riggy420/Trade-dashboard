@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me.data);
     // Pre-cache stock data in background while user navigates
     axios.post(`${API_BASE}/refresh/tickers`, {}, { headers: { Authorization: `Bearer ${data.access_token}` } }).catch(() => {});
-    axios.post(`${API_BASE}/refresh/intraday/all?limit=50`, {}, { headers: { Authorization: `Bearer ${data.access_token}` } }).catch(() => {});
+    axios.post(`${API_BASE}/refresh/intraday/all`, {}, { headers: { Authorization: `Bearer ${data.access_token}` } }).catch(() => {});
   };
 
   const register = async (username: string, email: string, password: string) => {

@@ -337,7 +337,7 @@ def fetch_intraday(ticker: str, market: str | None = None) -> str:
     if os.path.exists(filepath):
         try:
             existing_frame = _read_intraday_frame(filepath)
-            recent_frame = tkr.history(period="3d", interval="1h").round(2)
+            recent_frame = tkr.history(period="1d", interval="1h").round(2)
             recent_frame = recent_frame.tail(3).copy()
 
             if not existing_frame.empty and not recent_frame.empty and _frames_align(existing_frame, recent_frame):
