@@ -134,42 +134,196 @@ Targets securities overwhelmed almost entirely by day traders. Meets **both**:
 
 ---
 
-## Decision Tree for Stock Supervision
+## Decision Trees for Stock Supervision
+
+### Tree 1 — Violation Detection
+
+```
+All 14 articles scored in parallel. Each checks its own thresholds + market/sector
+divergence independently. Any article that triggers feeds into the exception review.
+If NONE trigger, the stock is ordinary trading.
+```
 
 ```mermaid
 flowchart TD
-    A(["Start: Daily Market Surveillance"]) --> B{"6-Day Price Change > 25% or 32%?<br>OR Month+ Change > 100%?"}
-    B -- Yes --> C{"Differs from Market/Sector Avg<br>by > 20%?<br>[Articles 2, 3, 12]"}
-    B -- No --> D{"Daily Volume > 5x Average?<br>OR Turnover > 10%?<br>OR Day Trading > 60%?"}
-    
-    C -- Yes --> H{"Check Exceptions (Global & Specific)"}
-    C -- No --> D
-    
-    D -- Yes --> E{"Volume/Turnover Differs<br>from Market Avg significantly?<br>[Articles 4, 5, 6, 10, 11, 13, 14]"}
-    D -- No --> F{"P/E >= 60 or Negative?<br>OR P/B >= 6.0?<br>OR Long/Short Ratio >= 20%?"}
-    
-    E -- Yes --> H
-    E -- No --> F
-    
-    F -- Yes --> J{"Are specific concentration/premium<br>limits exceeded? (e.g. >10% trade share)<br>[Articles 7, 8, 9]"}
-    J -- Yes --> H
-    J -- No --> X
-    F -- No --> X(["No Action: Ordinary Trading"])
-    
-    H --> K{"Is it a newly-listed stock<br>with no limit?"}
-    K -- Yes --> X
-    K -- No --> L{"Is fluctuation due to<br>ex-rights / ex-dividend?"}
-    
-    L -- Yes --> X
-    L -- No --> M{"Is Price < NT$5 or<br>Volume < 500 units?"}
-    
-    M -- Yes --> X
-    M -- No --> N{"Sector < 5 Stocks?"}
-    
-    N -- Yes --> O("Sector Comparisons Waived") --> P
-    N -- No --> P{"Exempted asset class?<br>(e.g. Warrants, Passive ETFs)"}
-    
-    P -- Yes --> X
-    P -- No --> Z(["Flagged: Issue Announcement & <br>Notice of Attention"])
+    classDef start    fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#000
+    classDef decision fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#000
+    classDef article  fill:#f0f9ff,stroke:#0284c7,stroke-width:1px,color:#000,font-size:10px
+    classDef pass     fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#16a34a,font-weight:bold
+
+    ROOT(["Start: Daily Market Data<br/>OHLCV + Intraday + Fundamentals"]):::start
+
+    %% All 14 articles scored in parallel
+    ROOT --> PRICE
+    ROOT --> VOLUME
+    ROOT --> VALUATION
+
+    subgraph PRICE [Price Momentum]
+        A2["Art 2: 6d Δ≥32% + diverge≥20%"]:::article
+        A3["Art 3: 30d>100% / 60d>130% / 90d>160%"]:::article
+        A12["Art 12: NT$ swing≥100 (sliding scale)"]:::article
+        A41["Art 4-1: Intraday swing≥15% + vol"]:::article
+    end
+
+    subgraph VOLUME [Volume & Turnover]
+        A4["Art 4: Δ>25% + vol≥5× 60d avg"]:::article
+        A5["Art 5: Δ>25% + turnover≥10%"]:::article
+        A10["Art 10: 6d+1d vol≥5× 60d avg"]:::article
+        A11["Art 11: Cumul TO>50% + 1d≥10%"]:::article
+    end
+
+    subgraph VALUATION [Valuation & Structure]
+        A7["Art 7: P/E≥60x + P/B≥6.0 + TO≥5%"]:::article
+        A6["Art 6,8,9,13,14 [STUB]"]:::article
+    end
+
+    A2 & A3 & A12 & A41 & A4 & A5 & A10 & A11 & A7 & A6 --> MERGE{"Any article<br/>triggered?"}:::decision
+
+    MERGE -- "NO" --> X(["NO ACTION<br/>Ordinary Trading"]):::pass
+    MERGE -- "YES" --> GATE(["→ Enter Exception Review"]):::pass
 ```
+
+---
+
+### Tree 2 — Exception Review (Safe Harbors)
+
+```
+An article was triggered. Now check: is the stock exempt?
+Exceptions are checked in order. The FIRST matching exception applies.
+If none match, the stock is FLAGGED.
+```
+
+```mermaid
+flowchart TD
+    classDef except   fill:#f8fafc,stroke:#94a3b8,stroke-dasharray:5 5,color:#000
+    classDef flagged  fill:#fef2f2,stroke:#dc2626,stroke-width:3px,color:#dc2626,font-weight:bold
+    classDef clear    fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#16a34a
+    classDef waived   fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#d97706
+    classDef entry    fill:#f0fdf4,stroke:#16a34a,stroke-width:3px,color:#000,font-weight:bold
+
+    ENTRY(["Article Triggered"]):::entry
+    ENTRY --> E1
+
+    E1{"Newly listed<br/>(no price limit)?"}:::except
+    E1 -- "YES" --> X1(["NO ACTION"]):::clear
+    E1 -- "NO" --> E2
+
+    E2{"Ex-rights or<br/>ex-dividend?"}:::except
+    E2 -- "YES" --> X2(["NO ACTION"]):::clear
+    E2 -- "NO" --> E3
+
+    E3{"Price < NT$5?<br/>Vol < 500?<br/>Turnover < 0.1%?"}:::except
+    E3 -- "YES" --> S1(["SAFE HARBOR"]):::clear
+    E3 -- "NO" --> E4
+
+    E4{"Sector < 5<br/>securities?"}:::except
+    E4 -- "YES" --> W(["SECTOR WAIVED"]):::waived
+    E4 -- "NO" --> E5
+
+    E5{"Already flagged<br/>recently?"}:::except
+    E5 -- "YES" --> X3(["NO ACTION"]):::clear
+    E5 -- "NO" --> E6
+
+    E6{"ETF, Warrant,<br/>ETN, or CB?"}:::except
+    E6 -- "YES" --> S2(["SAFE HARBOR"]):::clear
+    E6 -- "NO" --> Z
+
+    Z(["FLAGGED<br/>Call Auction · Pre-Collection<br/>Day-Trade Ban · Full Margin"]):::flagged
+```
+
+---
+
+### Sub-Trees: Within Each Detection Gate
+
+#### Gate 1 — Price Momentum
+
+```mermaid
+flowchart TD
+    classDef decision fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#000
+    classDef triggered fill:#fef2f2,stroke:#dc2626,stroke-width:2px,color:#dc2626,font-weight:bold
+
+    P0(["Price Gate Entered"])-->P1
+
+    P1{"6d close change<br/>≥ 32%?<br/>(or ≥ 25% + NT$50)"}:::decision
+    P1-- "YES" -->P1A{"Diverges from<br/>mkt & sector<br/>≥ 20%?"}:::decision
+    P1A-- "YES" -->P1B["Art 2 TRIGGERED"]:::triggered
+    P1A-- "NO" -->P2
+    P1-- "NO" -->P2
+
+    P2{"30d > 100%<br/>60d > 130%<br/>90d > 160%?"}:::decision
+    P2-- "YES" -->P2A{"Diverges ≥ 85%<br/>110% / 135%?"}:::decision
+    P2A-- "YES" -->P2B["Art 3 TRIGGERED"]:::triggered
+    P2A-- "NO" -->P3
+    P2-- "NO" -->P3
+
+    P3{"6d NT$ diff ≥ 100<br/>(+25 per NT$500<br/>if price ≥ 500)?"}:::decision
+    P3-- "YES" -->P3A{"Is 6d high<br/>or 6d low?"}:::decision
+    P3A-- "YES" -->P3B["Art 12 TRIGGERED"]:::triggered
+    P3A-- "NO" -->P_OUT
+    P3-- "NO" -->P_OUT(["Gate 1 Clean<br/>→ Gate 2"])
+```
+
+Art 2 checks short-term percentage moves. If clean, Art 3 checks long-term sustained runs. Art 12 catches large absolute NT\$ swings (primarily expensive stocks) that don't reach the percentage thresholds. Each has its own divergence check.
+
+#### Gate 2 — Volume & Turnover
+
+```mermaid
+flowchart TD
+    classDef decision fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#000
+    classDef triggered fill:#fef2f2,stroke:#dc2626,stroke-width:2px,color:#dc2626,font-weight:bold
+
+    V0(["Volume Gate Entered"])-->V1
+
+    V1{"6d price Δ > 25%<br/>AND vol ≥ 5× 60d avg?"}:::decision
+    V1-- "YES" -->V1A{"Vol diverges<br/>from mkt ≥ 4×?"}:::decision
+    V1A-- "YES" -->V1B["Art 4 TRIGGERED"]:::triggered
+    V1A-- "NO" -->V2
+    V1-- "NO" -->V2
+
+    V2{"6d price Δ > 25%<br/>AND turnover ≥ 10%?"}:::decision
+    V2-- "YES" -->V2A{"Turnover diverges<br/>from mkt ≥ 5%?"}:::decision
+    V2A-- "YES" -->V2B["Art 5 TRIGGERED"]:::triggered
+    V2A-- "NO" -->V3
+    V2-- "NO" -->V3
+
+    V3{"6d avg vol ≥ 5×<br/>60d avg?"}:::decision
+    V3-- "YES" -->V3A{"Diverges from<br/>mkt ≥ 4×?"}:::decision
+    V3A-- "YES" -->V3B["Art 10 TRIGGERED"]:::triggered
+    V3A-- "NO" -->V4
+    V3-- "NO" -->V4
+
+    V4{"6d cumul turnover<br/>> 50% AND<br/>1d turnover ≥ 10%?"}:::decision
+    V4-- "YES" -->V4A{"Diverges from<br/>mkt ≥ 40% / 5%?"}:::decision
+    V4A-- "YES" -->V4B["Art 11 TRIGGERED"]:::triggered
+    V4A-- "NO" -->V_OUT
+    V4-- "NO" -->V_OUT(["Gate 2 Clean<br/>→ Gate 3"])
+```
+
+Art 4 and 5 require both price movement AND elevated volume/turnover (price-contingent). Art 10 and 11 check volume/turnover independently of price. Price-contingent articles check first since a stock with both price and volume anomalies is the strongest signal.
+
+#### Gate 3 — Valuation & Structure
+
+```mermaid
+flowchart TD
+    classDef decision fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#000
+    classDef triggered fill:#fef2f2,stroke:#dc2626,stroke-width:2px,color:#dc2626,font-weight:bold
+    classDef stub fill:#f8fafc,stroke:#94a3b8,stroke-dasharray:5 5,color:#94a3b8
+
+    F0(["Valuation Gate Entered"])-->F1
+
+    F1{"P/E ≥ 60× or negative<br/>AND P/B ≥ 6.0<br/>AND turnover ≥ 5%?"}:::decision
+    F1-- "YES" -->F1A{"P/E ≥ 2× mkt avg?<br/>P/B ≥ 4× sector avg?"}:::decision
+    F1A-- "YES" -->F1B["Art 7 TRIGGERED"]:::triggered
+    F1A-- "NO" -->F2
+    F1-- "NO" -->F2
+
+    F2{"Art 6: Broker conc. > 25%?<br/>Art 8: Long/short ≥ 20%?<br/>Art 9: TDR Prem > 80%?<br/>Art 13: Borrowed ≥ 12%?<br/>Art 14: Day-trade > 60%?"}:::decision
+    F2-- "YES" -->F2A{"Thresholds<br/>exceeded?"}:::decision
+    F2A-- "YES" -->F2B["Art 6/8/9/13/14<br/>[STUB — data unavailable]"]:::stub
+    F2A-- "NO" -->F_OUT
+    F2-- "NO" -->F_OUT(["Gate 3 Clean<br/>→ NO ACTION"])
+```
+
+Art 7 is the only fully computable valuation article. Arts 6, 8, 9, 13, 14 require TWSE-specific data (broker-level, margin reports, TDR reference prices, borrowed securities, day-trade breakdowns) that are not available from public sources. They are evaluated as stubs — returning `triggered=False` with an explicit caveat.
+
 

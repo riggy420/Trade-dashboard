@@ -175,9 +175,9 @@ export default function ReportsPage() {
             <p className="text-xs uppercase text-gray-600 font-semibold">Net Invested</p>
             <p className={`text-xl font-bold mt-1 ${netInvested >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(netInvested)}</p>
           </div>
-          <div className={`rounded p-3 shadow-sm border ${unrealizedPnl >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <div className={`rounded p-3 shadow-sm border ${unrealizedPnl >= 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
             <p className="text-xs uppercase text-gray-600 font-semibold">Unrealized P&amp;L</p>
-            <p className={`text-xl font-bold mt-1 ${unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <p className={`text-xl font-bold mt-1 ${unrealizedPnl >= 0 ? 'text-red-700' : 'text-green-700'}`}>
               {hasPrices ? `${unrealizedPnl >= 0 ? '+' : ''}${fmt(unrealizedPnl)}` : '—'}
             </p>
           </div>
@@ -236,7 +236,7 @@ export default function ReportsPage() {
                     <td className="px-3 py-2 text-right text-xs font-semibold">{h.netPosition}</td>
                     <td className="px-3 py-2 text-right text-xs text-gray-700">{fmt(h.avgBuy)}</td>
                     <td className="px-3 py-2 text-right text-xs font-semibold">{h.currentPrice ? fmt(h.currentPrice) : '—'}</td>
-                    <td className={`px-3 py-2 text-right text-xs font-bold ${h.pnl !== null ? (h.pnl >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
+                    <td className={`px-3 py-2 text-right text-xs font-bold ${h.pnl !== null ? (h.pnl >= 0 ? 'text-red-600' : 'text-green-600') : 'text-gray-400'}`}>
                       {h.pnl !== null ? `${h.pnl >= 0 ? '+' : ''}${fmt(h.pnl)}` : '—'}
                     </td>
                   </tr>
@@ -244,7 +244,7 @@ export default function ReportsPage() {
                 <tr className="bg-gray-50 font-bold text-xs">
                   <td colSpan={4} className="px-3 py-2 text-right text-gray-600">Total Unrealized:</td>
                   <td className="px-3 py-2 text-right font-bold">{holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0) > 0 ? fmt(holdingsWithPnl.reduce((s, h) => s + (h.marketValue ?? h.costBasis), 0)) : '—'}</td>
-                  <td className={`px-3 py-2 text-right font-bold ${unrealizedPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <td className={`px-3 py-2 text-right font-bold ${unrealizedPnl >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {hasPrices ? `${unrealizedPnl >= 0 ? '+' : ''}${fmt(unrealizedPnl)}` : '—'}
                   </td>
                 </tr>

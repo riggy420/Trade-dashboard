@@ -15,7 +15,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 FUNDAMENTALS_FILE = os.path.join(DATA_DIR, "twse_fundamentals.json")
 
 FIELDS = ("sharesOutstanding", "trailingPE", "forwardPE", "priceToBook",
-          "marketCap", "beta", "bookValue", "returnOnEquity")
+          "marketCap", "beta", "bookValue", "returnOnEquity", "longName")
 
 
 def _is_bond_or_fund(symbol: str) -> bool:

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory, fetchTrades, fetchSupervisionScan, refreshSupervisionCache } from '../api/endpoints';
+import { fetchIndices, refreshIndices, fetchSectors, fetchIndexConstituents, fetchIndexHistory, getTickers, fetchHoldings, fetchSymbolHistory, fetchTrades, fetchTickersSupervised, fullSupervisionRefresh } from '../api/endpoints';
 import { useNavigate } from 'react-router-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -26,10 +26,11 @@ export default function Dashboard() {
   const { addNotification } = useNotifications();
   const [tickers, setTickers] = useState<any[]>([]);
   const prevPricesRef = useRef<Map<string, number>>(new Map());
-  const [supervisionAlerts, setSupervisionAlerts] = useState<any[]>([]);
+  const [supervisionTickers, setSupervisionTickers] = useState<any[]>([]);
   const [supervisionLoading, setSupervisionLoading] = useState(false);
   const [supervisionSummary, setSupervisionSummary] = useState<any>(null);
   const [supervisionExpanded, setSupervisionExpanded] = useState(false);
+  const [supervisionFilter, setSupervisionFilter] = useState('');
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -71,11 +72,26 @@ export default function Dashboard() {
   const fetchSupervisionAlerts = async (force?: boolean) => {
     setSupervisionLoading(true);
     try {
-      const data = await fetchSupervisionScan(20, 0, undefined, force);
-      setSupervisionAlerts(data.stocks || []);
+      const data = await fetchTickersSupervised(force);
+      // Show ALL tickers — scored ones first, unscored (null) at the bottom
+      const items = (data.tickers || [])
+        .sort((a: any, b: any) => (b.supervision_score ?? -1) - (a.supervision_score ?? -1));
+      setSupervisionTickers(items);
+
+      // Count risk levels from scanned stocks only
+      const riskCounts: Record<string, number> = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNSCORED": 0};
+      for (const t of items) {
+        if (!t.has_supervision) {
+          riskCounts["UNSCORED"] = (riskCounts["UNSCORED"] || 0) + 1;
+        } else {
+          const rl = t.supervision_risk || 'LOW';
+          riskCounts[rl] = (riskCounts[rl] || 0) + 1;
+        }
+      }
       setSupervisionSummary({
-        risk_counts: data.risk_counts,
-        total_scanned: data.total_scanned,
+        risk_counts: riskCounts,
+        total_scanned: items.filter((t: any) => t.has_supervision).length,
+        total_tickers: data.total,
         scan_timestamp: data.scan_timestamp,
       });
     } catch (e) {
@@ -85,8 +101,16 @@ export default function Dashboard() {
   };
 
   const handleRefreshSupervision = async () => {
-    await refreshSupervisionCache();
+    setSupervisionLoading(true);
+    try {
+      // Full pipeline: fetch missing historical → fundamentals → scan → persist
+      await fullSupervisionRefresh(true);
+    } catch (e) {
+      console.error("Full refresh pipeline failed:", e);
+    }
+    // Reload the merged ticker+score list
     await fetchSupervisionAlerts(true);
+    setSupervisionLoading(false);
   };
 
   const refreshLiveData = () => {
@@ -172,7 +196,7 @@ export default function Dashboard() {
 
     const first = values[0];
     const last = values[values.length - 1];
-    const color = isPrice ? (last >= first ? '#16a34a' : '#dc2626') : (last >= 0 ? '#16a34a' : '#dc2626');
+    const color = isPrice ? (last >= first ? '#dc2626' : '#16a34a') : (last >= 0 ? '#dc2626' : '#16a34a');
 
     return (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="inline-block align-middle">
@@ -388,12 +412,12 @@ export default function Dashboard() {
             <p className="text-[10px] uppercase text-gray-500 font-semibold tracking-wide">Portfolio Value</p>
             <p className="text-lg font-black text-gray-900 mt-1">{fmtNT(portfolioSummary.totalValue)}</p>
           </div>
-          <div className={`rounded-lg p-3 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <div className={`rounded-lg p-3 shadow-sm border ${portfolioSummary.count === 0 ? 'bg-white border-gray-200' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
             <p className="text-[10px] uppercase font-semibold tracking-wide text-gray-600">Total P&amp;L</p>
-            <p className={`text-lg font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <p className={`text-lg font-black mt-1 ${portfolioSummary.count === 0 ? 'text-gray-400' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-red-700' : 'text-green-700'}`}>
               {(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? '+' : ''}{fmtNT(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost)}
             </p>
-            <p className={`text-[10px] font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-[10px] font-bold mt-0.5 ${portfolioSummary.count === 0 ? 'text-gray-400' : (realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
               {totalInvested > 0 ? `(${(realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? '+' : ''}${(((realizedPnl + portfolioSummary.totalValue - portfolioSummary.totalCost) / totalInvested) * 100).toFixed(2)}%)` : '(—)'}
             </p>
           </div>
@@ -406,9 +430,9 @@ export default function Dashboard() {
               {totalInvested > 0 ? `${realizedPnl >= 0 ? '+' : ''}${((realizedPnl / totalInvested) * 100).toFixed(2)}%` : '—'}
             </p>
           </div>
-          <div className={`rounded-lg p-3 shadow-sm border ${(portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-purple-50 border-purple-200' : 'bg-pink-50 border-pink-200'}`}>
+          <div className={`rounded-lg p-3 shadow-sm border ${(portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
             <p className="text-[10px] uppercase font-semibold tracking-wide text-gray-600">Unrealized</p>
-            <p className={`text-lg font-black mt-1 ${(portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-purple-700' : 'text-pink-700'}`}>
+            <p className={`text-lg font-black mt-1 ${(portfolioSummary.totalValue - portfolioSummary.totalCost) >= 0 ? 'text-red-700' : 'text-green-700'}`}>
               {portfolioSummary.totalValue - portfolioSummary.totalCost >= 0 ? '+' : ''}{fmtNT(portfolioSummary.totalValue - portfolioSummary.totalCost)}
             </p>
             <p className={`text-[10px] font-bold mt-0.5 ${portfolioSummary.pnlPct >= 0 ? 'text-purple-500' : 'text-pink-500'}`}>
@@ -452,7 +476,7 @@ export default function Dashboard() {
                   <div className="text-xs mt-0.5">
                     Now <span className="font-semibold text-gray-700">{fmtNT(h.currentPrice)}</span>
                     {h.pnlPct !== null && (
-                      <span className={`ml-1 font-bold ${h.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`ml-1 font-bold ${h.pnlPct >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {h.pnlPct >= 0 ? '+' : ''}{h.pnlPct.toFixed(2)}%
                       </span>
                     )}
@@ -549,7 +573,7 @@ export default function Dashboard() {
                 <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={5} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
                 <Tooltip formatter={(v: any) => [`${Number(v).toFixed(2)}%`, 'Cumulative Return']} />
-                <Line type="monotone" dataKey="pct" stroke={cumulativeReturns.length > 0 && cumulativeReturns[cumulativeReturns.length - 1].pct >= 0 ? '#16a34a' : '#dc2626'} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="pct" stroke={cumulativeReturns.length > 0 && cumulativeReturns[cumulativeReturns.length - 1].pct >= 0 ? '#dc2626' : '#16a34a'} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -614,7 +638,7 @@ export default function Dashboard() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-bold text-gray-900">{idx.price ?? '-'}</p>
-                        <p className={`text-xs ${idx.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-xs ${idx.change >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {idx.change !== null ? `${idx.change >= 0 ? '+' : ''}${idx.change}%` : '-'}
                         </p>
                       </div>
@@ -660,7 +684,7 @@ export default function Dashboard() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-bold text-gray-900">{idx.price ?? '-'}</p>
-                        <p className={`text-xs ${idx.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-xs ${idx.change >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {idx.change !== null ? `${idx.change >= 0 ? '+' : ''}${idx.change}%` : '-'}
                         </p>
                       </div>
@@ -689,7 +713,7 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600 mt-1">{selectedIndex.category}</p>
                 <p className="mt-3 text-sm">
                   <span className="font-semibold">Value:</span> {selectedIndex.price ?? '-'}
-                  <span className={`ml-3 font-semibold ${selectedIndex.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`ml-3 font-semibold ${selectedIndex.change >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {selectedIndex.change !== null ? `${selectedIndex.change >= 0 ? '+' : ''}${selectedIndex.change}%` : ''}
                   </span>
                 </p>
@@ -738,7 +762,7 @@ export default function Dashboard() {
                               {stock.minigraph ? renderSparkline(stock.minigraph) : <span className="text-gray-400 text-xs italic">No data</span>}
                             </td>
                             <td className="px-3 py-2 text-right font-semibold">{stock.price ?? '-'}</td>
-                            <td className={`px-3 py-2 text-right font-semibold ${stock.change && stock.change >= 0 ? 'text-green-600' : stock.change ? 'text-red-600' : 'text-gray-400'}`}>
+                            <td className={`px-3 py-2 text-right font-semibold ${stock.change && stock.change >= 0 ? 'text-red-600' : stock.change ? 'text-green-600' : 'text-gray-400'}`}>
                               {stock.change !== null ? `${stock.change >= 0 ? '+' : ''}${stock.change}%` : '-'}
                             </td>
                           </tr>
@@ -774,20 +798,20 @@ export default function Dashboard() {
                     <p className="font-semibold text-gray-800">{sector.sector}</p>
                     <p className="text-xs text-gray-500">{sector.stock_count} stocks • {sector.available_data_count} with data</p>
                   </div>
-                  <span className={`text-sm font-bold ${sector.average_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-sm font-bold ${sector.average_change >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {sector.average_change !== null ? `${sector.average_change >= 0 ? '+' : ''}${sector.average_change}%` : '-'}
                   </span>
                 </div>
                 <div className="mt-3 text-sm text-gray-600">
                   <div className="flex justify-between gap-2">
                     <span>Top</span>
-                    <span className="font-medium text-green-700">
+                    <span className="font-medium text-red-700">
                       {sector.top_performer ? `${sector.top_performer.symbol} ${sector.top_performer.change >= 0 ? '+' : ''}${sector.top_performer.change}%` : '-'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2 mt-1">
                     <span>Weakest</span>
-                    <span className="font-medium text-red-700">
+                    <span className="font-medium text-green-700">
                       {sector.worst_performer ? `${sector.worst_performer.symbol} ${sector.worst_performer.change >= 0 ? '+' : ''}${sector.worst_performer.change}%` : '-'}
                     </span>
                   </div>
@@ -800,19 +824,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Supervision / Disposition Alerts */}
+      {/* Supervision / Disposition Risk — All Stocks */}
       <div className="mb-8 border border-gray-200 rounded shadow-sm bg-white p-4">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="font-bold text-lg">Disposition Risk Monitor</h2>
+            <h2 className="font-bold text-lg">Disposition Risk — All Stocks</h2>
             <p className="text-xs text-gray-500">
-              TWSE monitoring rule alerts — stocks flagged for potential disposition/attention
+              {supervisionSummary
+                ? `${supervisionSummary.total_tickers || 0} tickers · ${supervisionSummary.total_scanned} scored`
+                : 'TWSE monitoring rule risk scores for every listed stock'}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {supervisionSummary && (
               <span className="text-xs text-gray-400">
-                {supervisionSummary.total_scanned} scanned · {new Date(supervisionSummary.scan_timestamp).toLocaleTimeString()}
+                {new Date(supervisionSummary.scan_timestamp).toLocaleTimeString()}
               </span>
             )}
             <button
@@ -827,7 +853,7 @@ export default function Dashboard() {
 
         {/* Risk summary bar */}
         {supervisionSummary && (
-          <div className="flex gap-2 mb-4 flex-wrap">
+          <div className="flex gap-2 mb-3 flex-wrap">
             {Object.entries(supervisionSummary.risk_counts || {}).map(([level, count]) => (
               <div key={level} className={`px-3 py-1 rounded text-xs font-bold ${
                 level === 'CRITICAL' ? 'bg-red-100 text-red-700 border border-red-200' :
@@ -841,81 +867,114 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Alert list */}
-        {supervisionAlerts.length > 0 ? (
-          <div className="overflow-x-auto">
+        {/* Filter */}
+        <div className="mb-3">
+          <input
+            type="text"
+            placeholder="Filter by symbol..."
+            value={supervisionFilter}
+            onChange={(e) => setSupervisionFilter(e.target.value)}
+            className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
+        {/* Full ticker risk list */}
+        {supervisionTickers.length > 0 ? (
+          <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
             <table className="w-full text-sm">
-              <thead className="border-b-2 border-gray-200">
+              <thead className="sticky top-0 bg-white border-b-2 border-gray-200 z-10">
                 <tr className="text-gray-600 text-xs">
-                  <th className="text-left py-2 px-3 font-semibold">Symbol</th>
-                  <th className="text-left py-2 px-3 font-semibold">Name</th>
-                  <th className="text-center py-2 px-3 font-semibold">Risk Score</th>
-                  <th className="text-center py-2 px-3 font-semibold">Risk Level</th>
-                  <th className="text-center py-2 px-3 font-semibold">Decision</th>
-                  <th className="text-left py-2 px-3 font-semibold">Triggered Articles</th>
-                  <th className="text-center py-2 px-3 font-semibold">Safe Harbor</th>
+                  <th className="text-left py-2 px-2 font-semibold">Symbol</th>
+                  <th className="text-center py-2 px-2 font-semibold">Score</th>
+                  <th className="text-center py-2 px-2 font-semibold">Risk</th>
+                  <th className="text-center py-2 px-2 font-semibold">Decision</th>
+                  <th className="text-left py-2 px-2 font-semibold">Triggered</th>
+                  <th className="text-left py-2 px-2 font-semibold">Exceptions</th>
                 </tr>
               </thead>
               <tbody>
-                {supervisionAlerts.map((alert: any) => (
-                  <tr
-                    key={alert.symbol}
-                    className="border-b hover:bg-gray-50 cursor-pointer transition"
-                    onClick={() => navigate(`/analysis/${alert.symbol}`)}
-                  >
-                    <td className="py-2 px-3 font-bold text-blue-600">{alert.symbol}</td>
-                    <td className="py-2 px-3 text-gray-700 truncate max-w-[160px]">{alert.name || 'Unknown'}</td>
-                    <td className="py-2 px-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              alert.total_score >= 70 ? 'bg-red-500' :
-                              alert.total_score >= 45 ? 'bg-orange-500' :
-                              alert.total_score >= 20 ? 'bg-yellow-500' :
-                              'bg-green-500'
-                            }`}
-                            style={{ width: `${Math.min(100, alert.total_score)}%` }}
-                          />
-                        </div>
-                        <span className="font-bold text-xs">{alert.total_score}</span>
-                      </div>
-                    </td>
-                    <td className="py-2 px-3 text-center">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                        alert.risk_level === 'CRITICAL' ? 'bg-red-100 text-red-700' :
-                        alert.risk_level === 'HIGH' ? 'bg-orange-100 text-orange-700' :
-                        alert.risk_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-500'
-                      }`}>
-                        {alert.risk_level}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-center text-xs">{alert.decision || 'N/A'}</td>
-                    <td className="py-2 px-3">
-                      <div className="flex gap-1 flex-wrap">
-                        {(alert.triggered_articles || []).map((art: string) => (
-                          <span key={art} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">{art}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-2 px-3 text-center text-xs">
-                      {alert.safe_harbor ? (
-                        <span className="text-green-600 font-medium" title={(alert.safe_harbor_reasons || []).join(', ')}>
-                          Yes
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {supervisionTickers
+                  .filter((t: any) => !supervisionFilter || t.symbol.includes(supervisionFilter.toUpperCase()))
+                  .map((t: any) => {
+                    const hasScore = t.has_supervision && t.supervision_score !== null && t.supervision_score !== undefined;
+                    const score = hasScore ? (t.supervision_score || 0) : 0;
+                    const risk = hasScore ? (t.supervision_risk || 'LOW') : '—';
+                    const triggered = t.supervision_triggered || [];
+                    const isUnscored = !hasScore;
+                    return (
+                      <tr
+                        key={t.symbol}
+                        className={`border-b hover:bg-gray-50 cursor-pointer transition ${
+                          isUnscored ? 'opacity-50' : score >= 70 ? 'bg-red-50' : score >= 45 ? 'bg-orange-50' : ''
+                        }`}
+                        onClick={() => navigate(`/analysis/${t.symbol}`)}
+                      >
+                        <td className={`py-1.5 px-2 font-bold text-xs ${isUnscored ? 'text-gray-400' : 'text-blue-600'}`}>{t.symbol}</td>
+                        <td className="py-1.5 px-2 text-center">
+                          {isUnscored ? (
+                            <span className="text-gray-300 text-[10px]">—</span>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <div className="w-10 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    score >= 70 ? 'bg-red-500' : score >= 45 ? 'bg-orange-500' :
+                                    score >= 20 ? 'bg-yellow-500' : 'bg-green-400'
+                                  }`}
+                                  style={{ width: `${Math.min(100, score)}%` }}
+                                />
+                              </div>
+                              <span className="font-bold text-[10px]">{score}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-2 text-center">
+                          {isUnscored ? (
+                            <span className="text-gray-300 text-[10px]">—</span>
+                          ) : (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              risk === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                              risk === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                              risk === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-500'
+                            }`}>{risk}</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-2 text-center text-[10px]">{isUnscored ? '—' : (t.supervision_decision || '—')}</td>
+                        <td className="py-1.5 px-2">
+                          {isUnscored ? (
+                            <span className="text-gray-300 text-[9px]">—</span>
+                          ) : (
+                            <div className="flex gap-0.5 flex-wrap">
+                              {triggered.map((art: string) => (
+                                <span key={art} className="text-[9px] bg-red-50 text-red-600 px-1 py-0.5 rounded font-medium">{art}</span>
+                              ))}
+                              {triggered.length === 0 && <span className="text-gray-300 text-[9px]">—</span>}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-2">
+                          {isUnscored ? (
+                            <span className="text-gray-300 text-[9px]">—</span>
+                          ) : t.supervision_safe_harbor && (t.supervision_harbor_reasons || []).length > 0 ? (
+                            <div className="flex gap-0.5 flex-wrap">
+                              {(t.supervision_harbor_reasons || []).map((r: string) => (
+                                <span key={r} className="text-[9px] bg-green-50 text-green-700 px-1 py-0.5 rounded font-medium" title={r}>{r}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-[9px]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
         ) : (
           <p className="text-sm text-gray-400 italic text-center py-4">
-            {supervisionLoading ? 'Running supervision scan...' : 'No stocks flagged — all clear.'}
+            {supervisionLoading ? 'Running supervision scan...' : 'No scan data — click Refresh Now.'}
           </p>
         )}
 

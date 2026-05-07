@@ -1,0 +1,2589 @@
+[
+  {
+    "symbol": "033441",
+    "name": "Unknown",
+    "date": "2026/04/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/17～2026/04/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "050503",
+    "name": "CHINATRUST",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 6
+  },
+  {
+    "symbol": "050503",
+    "name": "CHINATRUST",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "052108",
+    "name": "FB",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "05722U",
+    "name": "KGI",
+    "date": "2026/04/24",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/27～2026/05/11",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "1623",
+    "name": "TEWC",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "1711",
+    "name": "EVERLIGHT",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 11
+  },
+  {
+    "symbol": "1721",
+    "name": "SUNKO",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "1905",
+    "name": "CHP",
+    "date": "2026/04/01",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/02～2026/04/17",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 4
+  },
+  {
+    "symbol": "2231",
+    "name": "CUB",
+    "date": "2026/03/30",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/31～2026/04/15",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 4
+  },
+  {
+    "symbol": "2337",
+    "name": "MACRONIX",
+    "date": "2026/03/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/24～2026/04/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 13
+  },
+  {
+    "symbol": "2399",
+    "name": "BIOSTAR",
+    "date": "2026/03/20",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/23～2026/04/07",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "2426",
+    "name": "TYNTEK",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 11
+  },
+  {
+    "symbol": "2429",
+    "name": "PWT",
+    "date": "2026/04/27",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/28～2026/05/12",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "2451",
+    "name": "TRANSCEND",
+    "date": "2026/03/20",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/23～2026/04/07",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "2455",
+    "name": "VPEC",
+    "date": "2026/05/05",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/05/06～2026/05/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 13
+  },
+  {
+    "symbol": "2455",
+    "name": "VPEC",
+    "date": "2026/04/10",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/13～2026/04/24",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 11
+  },
+  {
+    "symbol": "2467",
+    "name": "C SUN",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 7
+  },
+  {
+    "symbol": "2484",
+    "name": "SIWARD",
+    "date": "2026/04/21",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/22～2026/05/06",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 5
+  },
+  {
+    "symbol": "2486",
+    "name": "I-CHIUN",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 10
+  },
+  {
+    "symbol": "2489",
+    "name": "AMTRAN",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 6
+  },
+  {
+    "symbol": "2923",
+    "name": "SINO HORIZON",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 5
+  },
+  {
+    "symbol": "3026",
+    "name": "HOLY STONE",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "3037",
+    "name": "UNIMICRON",
+    "date": "2026/04/13",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/14～2026/04/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 7
+  },
+  {
+    "symbol": "3042",
+    "name": "TXC",
+    "date": "2026/04/20",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/21～2026/05/05",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 6
+  },
+  {
+    "symbol": "3042",
+    "name": "TXC",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "3135",
+    "name": "GOLDKEY TECH.",
+    "date": "2026/03/31",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/01～2026/04/16",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 6
+  },
+  {
+    "symbol": "3167",
+    "name": "TA LIANG",
+    "date": "2026/05/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/05/05～2026/05/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 12
+  },
+  {
+    "symbol": "3167",
+    "name": "TA LIANG",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 12
+  },
+  {
+    "symbol": "3167",
+    "name": "TA LIANG",
+    "date": "2026/04/10",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/13～2026/04/24",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 9
+  },
+  {
+    "symbol": "3167",
+    "name": "TA LIANG",
+    "date": "2026/04/07",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/08～2026/04/21",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 6
+  },
+  {
+    "symbol": "3189",
+    "name": "KINSUS",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for three consecutive trading days and day trading percentage.",
+    "period": "2026/03/20～2026/04/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 10
+  },
+  {
+    "symbol": "3229",
+    "name": "CHEER TIME",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 7
+  },
+  {
+    "symbol": "3229",
+    "name": "CHEER TIME",
+    "date": "2026/04/20",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/21～2026/05/05",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 4
+  },
+  {
+    "symbol": "3443",
+    "name": "GUC",
+    "date": "2026/04/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/17～2026/04/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 7
+  },
+  {
+    "symbol": "3518",
+    "name": "PT TECH.",
+    "date": "2026/04/22",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/23～2026/05/07",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 4
+  },
+  {
+    "symbol": "3532",
+    "name": "FST",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "3583",
+    "name": "SCIENTECH",
+    "date": "2026/04/13",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/14～2026/04/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "3593",
+    "name": "LOGAH",
+    "date": "2026/04/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/17～2026/04/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "3653",
+    "name": "JENTECH",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 6
+  },
+  {
+    "symbol": "3714",
+    "name": "ENNOSTAR",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 4
+  },
+  {
+    "symbol": "4569",
+    "name": "SIXXON-KY",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "4576",
+    "name": "HMC",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 3
+  },
+  {
+    "symbol": "4764",
+    "name": "DBC",
+    "date": "2026/04/20",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/21～2026/05/05",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 8
+  },
+  {
+    "symbol": "4764",
+    "name": "DBC",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 6
+  },
+  {
+    "symbol": "4919",
+    "name": "NTC",
+    "date": "2026/04/21",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/22～2026/05/06",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 4
+  },
+  {
+    "symbol": "4949",
+    "name": "WIN",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4956",
+    "name": "EPILEDS",
+    "date": "2026/04/21",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/22～2026/05/06",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4960",
+    "name": "CMMT",
+    "date": "2026/04/22",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/23～2026/05/07",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4960",
+    "name": "CMMT",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4989",
+    "name": "LCYT",
+    "date": "2026/04/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/17～2026/04/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "5243",
+    "name": "ESON",
+    "date": "2026/04/10",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/13～2026/04/24",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6141",
+    "name": "PLOTECH",
+    "date": "2026/04/21",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/22～2026/05/06",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6213",
+    "name": "ITEQ",
+    "date": "2026/04/22",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for three consecutive trading days and day trading percentage.",
+    "period": "2026/04/23～2026/05/11",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6224",
+    "name": "PTTC.",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6278",
+    "name": "TSMT",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6405",
+    "name": "ONANO",
+    "date": "2026/05/05",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/05/06～2026/05/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6415",
+    "name": "SILERGY",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6426",
+    "name": "APOGEE",
+    "date": "2026/03/20",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/23～2026/04/07",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6442",
+    "name": "EZCONN",
+    "date": "2026/04/21",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/22～2026/05/06",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6443",
+    "name": "TSEC",
+    "date": "2026/04/27",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/28～2026/05/12",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6443",
+    "name": "TSEC",
+    "date": "2026/04/13",
+    "reason": "Trading of the securities in question has, for twelve days in the preceding thirty trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/14～2026/04/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6451",
+    "name": "SHUNSIN",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6451",
+    "name": "SHUNSIN",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6456",
+    "name": "GIS",
+    "date": "2026/04/20",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/21～2026/05/05",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6515",
+    "name": "WINWAY",
+    "date": "2026/03/25",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/26～2026/04/10",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6531",
+    "name": "AP MEMORY",
+    "date": "2026/04/24",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/27～2026/05/11",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6658",
+    "name": "SYNPOWER",
+    "date": "2026/05/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/05/05～2026/05/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6658",
+    "name": "SYNPOWER",
+    "date": "2026/04/28",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/29～2026/05/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6806",
+    "name": "SHINFOX ENERGY",
+    "date": "2026/04/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/16～2026/04/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6806",
+    "name": "SHINFOX ENERGY",
+    "date": "2026/04/10",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/13～2026/04/24",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6830",
+    "name": "MSS",
+    "date": "2026/04/13",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/14～2026/04/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6830",
+    "name": "MSS",
+    "date": "2026/04/08",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/09～2026/04/22",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6861",
+    "name": "INCX",
+    "date": "2026/05/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/05/05～2026/05/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6861",
+    "name": "INCX",
+    "date": "2026/04/28",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/29～2026/05/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6861",
+    "name": "INCX",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6949",
+    "name": "PELL BMT",
+    "date": "2026/04/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/17～2026/04/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7610",
+    "name": "LIANYOU METALS",
+    "date": "2026/04/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/20～2026/05/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7610",
+    "name": "LIANYOU METALS",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7711",
+    "name": "ASROCK RACK",
+    "date": "2026/04/28",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/29～2026/05/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7711",
+    "name": "ASROCK RACK",
+    "date": "2026/03/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/24～2026/04/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7721",
+    "name": "MICROPROGRAM",
+    "date": "2026/04/01",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/02～2026/04/17",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8021",
+    "name": "TOPOINT",
+    "date": "2026/04/24",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/27～2026/05/11",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8021",
+    "name": "TOPOINT",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8271",
+    "name": "APACER",
+    "date": "2026/04/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/24～2026/05/08",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8438",
+    "name": "AMIA",
+    "date": "2026/04/20",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/21～2026/05/05",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8996",
+    "name": "KAORI",
+    "date": "2026/04/14",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/04/15～2026/04/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1589",
+    "name": "YGG",
+    "date": "2026/03/09",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/10～2026/03/23",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1589",
+    "name": "YGG",
+    "date": "2026/03/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/05～2026/03/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1711",
+    "name": "EVERLIGHT",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1735",
+    "name": "EMC",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1802",
+    "name": "TGI",
+    "date": "2026/03/03",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/04～2026/03/17",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2243",
+    "name": "HS",
+    "date": "2026/03/18",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/19～2026/04/01",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2337",
+    "name": "MACRONIX",
+    "date": "2026/03/18",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/19～2026/04/01",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2338",
+    "name": "TMC",
+    "date": "2026/03/03",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/04～2026/03/17",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2360",
+    "name": "CHROMA",
+    "date": "2026/03/02",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/03～2026/03/16",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2367",
+    "name": "UNITECH",
+    "date": "2026/03/04",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/05～2026/03/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2426",
+    "name": "TYNTEK",
+    "date": "2026/03/18",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/19～2026/04/01",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2426",
+    "name": "TYNTEK",
+    "date": "2026/03/13",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/16～2026/03/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2455",
+    "name": "VPEC",
+    "date": "2026/02/26",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/02～2026/03/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2467",
+    "name": "C SUN",
+    "date": "2026/03/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/05～2026/03/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2485",
+    "name": "ZINWELL",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2486",
+    "name": "I-CHIUN",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2489",
+    "name": "AMTRAN",
+    "date": "2026/03/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/05～2026/03/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2489",
+    "name": "AMTRAN",
+    "date": "2026/02/26",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/02～2026/03/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2616",
+    "name": "SLC",
+    "date": "2026/03/09",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/10～2026/03/23",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3006",
+    "name": "ESMT",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3037",
+    "name": "UNIMICRON",
+    "date": "2026/03/18",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/19～2026/04/01",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3037",
+    "name": "UNIMICRON",
+    "date": "2026/03/02",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/03～2026/03/16",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3054",
+    "name": "LIWANLI",
+    "date": "2026/03/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/18～2026/03/31",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3054",
+    "name": "LIWANLI",
+    "date": "2026/03/12",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/13～2026/03/26",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3092",
+    "name": "HOTRON",
+    "date": "2026/03/03",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/04～2026/03/17",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3167",
+    "name": "TA LIANG",
+    "date": "2026/03/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/17～2026/03/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3167",
+    "name": "TA LIANG",
+    "date": "2026/02/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/02/24～2026/03/10",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3437",
+    "name": "AOT",
+    "date": "2026/03/18",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/19～2026/04/01",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3576",
+    "name": "NSP",
+    "date": "2026/03/03",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/04～2026/03/17",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4927",
+    "name": "APEX",
+    "date": "2026/03/02",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/03～2026/03/16",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4960",
+    "name": "CMMT",
+    "date": "2026/03/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/17～2026/03/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "5521",
+    "name": "KSECO",
+    "date": "2026/03/12",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/13～2026/03/26",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6141",
+    "name": "PLOTECH",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6141",
+    "name": "PLOTECH",
+    "date": "2026/03/05",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/06～2026/03/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6226",
+    "name": "PARA LIGHT",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6230",
+    "name": "NCCI",
+    "date": "2026/03/06",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/09～2026/03/20",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6426",
+    "name": "APOGEE",
+    "date": "2026/02/26",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/02～2026/03/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6442",
+    "name": "EZCONN",
+    "date": "2026/03/06",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/09～2026/03/20",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6451",
+    "name": "SHUNSIN",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6715",
+    "name": "LINTES",
+    "date": "2026/03/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/18～2026/03/31",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6715",
+    "name": "LINTES",
+    "date": "2026/03/12",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/13～2026/03/26",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6830",
+    "name": "MSS",
+    "date": "2026/03/09",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/10～2026/03/23",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6830",
+    "name": "MSS",
+    "date": "2026/03/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/05～2026/03/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6861",
+    "name": "INCX",
+    "date": "2026/03/05",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/06～2026/03/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6861",
+    "name": "INCX",
+    "date": "2026/03/02",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/03～2026/03/16",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7610",
+    "name": "LIANYOU METALS",
+    "date": "2026/02/26",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/02～2026/03/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7610",
+    "name": "LIANYOU METALS",
+    "date": "2026/02/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/02/24～2026/03/10",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8033",
+    "name": "TT",
+    "date": "2026/03/05",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/06～2026/03/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8046",
+    "name": "N.P.C",
+    "date": "2026/02/26",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/02～2026/03/13",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8271",
+    "name": "APACER",
+    "date": "2026/03/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/20～2026/04/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8271",
+    "name": "APACER",
+    "date": "2026/03/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/03/17～2026/03/30",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8996",
+    "name": "KAORI",
+    "date": "2026/02/24",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/02/25～2026/03/11",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1471",
+    "name": "SL",
+    "date": "2026/01/28",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/29～2026/02/11",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1802",
+    "name": "TGI",
+    "date": "2026/01/22",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/23～2026/02/05",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2486",
+    "name": "I-CHIUN",
+    "date": "2026/01/29",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/30～2026/02/23",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2489",
+    "name": "AMTRAN",
+    "date": "2026/01/27",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/28～2026/02/10",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6426",
+    "name": "APOGEE",
+    "date": "2026/02/04",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for three consecutive trading days and day trading percentage.",
+    "period": "2026/02/05～2026/03/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6442",
+    "name": "EZCONN",
+    "date": "2026/02/03",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/02/04～2026/02/26",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6446",
+    "name": "PEC",
+    "date": "2026/02/02",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/02/03～2026/02/25",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6949",
+    "name": "PELL BMT",
+    "date": "2026/02/02",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/02/03～2026/02/25",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6949",
+    "name": "PELL BMT",
+    "date": "2026/01/28",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/29～2026/02/11",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "7780",
+    "name": "DAIKEN",
+    "date": "2026/01/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/26～2026/02/06",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8021",
+    "name": "TOPOINT",
+    "date": "2026/01/23",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/26～2026/02/06",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8046",
+    "name": "N.P.C",
+    "date": "2026/01/26",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/27～2026/02/09",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "9103",
+    "name": "MEDTECS",
+    "date": "2026/01/30",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/02/02～2026/02/24",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1528",
+    "name": "ANDERSON",
+    "date": "2026/01/21",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/22～2026/02/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1528",
+    "name": "ANDERSON",
+    "date": "2025/12/31",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/02～2026/01/15",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1721",
+    "name": "SUNKO",
+    "date": "2026/01/20",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/21～2026/02/03",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1789",
+    "name": "SPT",
+    "date": "2026/01/13",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/14～2026/01/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2312",
+    "name": "KINPO",
+    "date": "2026/01/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/20～2026/02/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2337",
+    "name": "MACRONIX",
+    "date": "2026/01/09",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/12～2026/01/23",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2344",
+    "name": "WEC",
+    "date": "2026/01/08",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for five consecutive trading days and day trading percentage.",
+    "period": "2026/01/09～2026/01/26",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2408",
+    "name": "NTC",
+    "date": "2026/01/08",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/09～2026/01/22",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2413",
+    "name": "UMEC",
+    "date": "2025/12/31",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for three consecutive trading days and day trading percentage.",
+    "period": "2026/01/02～2026/01/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2485",
+    "name": "ZINWELL",
+    "date": "2026/01/19",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/20～2026/02/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3006",
+    "name": "ESMT",
+    "date": "2026/01/08",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/09～2026/01/22",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3006",
+    "name": "ESMT",
+    "date": "2026/01/05",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/06～2026/01/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3092",
+    "name": "HOTRON",
+    "date": "2025/12/31",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/02～2026/01/15",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3138",
+    "name": "AUDEN",
+    "date": "2026/01/15",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/16～2026/01/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3308",
+    "name": "BESTEC",
+    "date": "2026/01/06",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/07～2026/01/20",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3432",
+    "name": "TAI TWUN",
+    "date": "2026/01/21",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/22～2026/02/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3481",
+    "name": "INX",
+    "date": "2026/01/06",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/07～2026/01/20",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3701",
+    "name": "FICG",
+    "date": "2025/12/31",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/02～2026/01/15",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4967",
+    "name": "TEAM",
+    "date": "2026/01/12",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/13～2026/01/26",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6116",
+    "name": "HANNSTAR",
+    "date": "2026/01/09",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/12～2026/01/23",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6205",
+    "name": "COXOC",
+    "date": "2025/12/31",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/02～2026/01/15",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6770",
+    "name": "PSMC",
+    "date": "2026/01/08",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/09～2026/01/22",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8033",
+    "name": "TT",
+    "date": "2026/01/14",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/15～2026/01/28",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8046",
+    "name": "N.P.C",
+    "date": "2026/01/21",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/22～2026/02/04",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8438",
+    "name": "AMIA",
+    "date": "2026/01/08",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/09～2026/01/22",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8438",
+    "name": "AMIA",
+    "date": "2026/01/05",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/06～2026/01/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8996",
+    "name": "KAORI",
+    "date": "2026/01/15",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2026/01/16～2026/01/29",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2349",
+    "name": "RITEK",
+    "date": "2025/12/16",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/12/17～2025/12/31",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2408",
+    "name": "NTC",
+    "date": "2025/12/05",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/12/08～2025/12/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2491",
+    "name": "FOCL",
+    "date": "2025/12/04",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/12/05～2025/12/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "3229",
+    "name": "CHEER TIME",
+    "date": "2025/12/17",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/12/18～2026/01/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "5521",
+    "name": "KSECO",
+    "date": "2025/12/17",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/12/18～2026/01/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6442",
+    "name": "EZCONN",
+    "date": "2025/11/28",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for five consecutive trading days and day trading percentage.",
+    "period": "2025/12/01～2025/12/16",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6443",
+    "name": "TSEC",
+    "date": "2025/12/16",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/12/17～2025/12/31",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8033",
+    "name": "TT",
+    "date": "2025/12/03",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for five consecutive trading days and day trading percentage.",
+    "period": "2025/12/04～2025/12/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8110",
+    "name": "WALTON",
+    "date": "2025/12/15",
+    "reason": "Trading of the securities in question has met TWSE’s “Attention Securities” criteria for three consecutive trading days and day trading percentage.",
+    "period": "2025/12/16～2026/01/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8996",
+    "name": "KAORI",
+    "date": "2025/12/05",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/12/08～2025/12/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "1519",
+    "name": "FE",
+    "date": "2025/11/05",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/06～2025/11/19",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2344",
+    "name": "WEC",
+    "date": "2025/11/03",
+    "reason": "Trading of the securities in question has, for six days in the preceding ten trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/04～2025/11/17",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 10"
+    ],
+    "primary_article": "Art 10",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2451",
+    "name": "TRANSCEND",
+    "date": "2025/11/13",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/14～2025/11/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "2515",
+    "name": "BES",
+    "date": "2025/11/04",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/05～2025/11/18",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4764",
+    "name": "DBC",
+    "date": "2025/10/29",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/10/30～2025/11/12",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "4764",
+    "name": "DBC",
+    "date": "2025/10/23",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/10/27～2025/11/07",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "6155",
+    "name": "KC",
+    "date": "2025/11/18",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/19～2025/12/02",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8110",
+    "name": "WALTON",
+    "date": "2025/11/13",
+    "reason": "Trading of the securities in question has, for three consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/14～2025/11/27",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  },
+  {
+    "symbol": "8996",
+    "name": "KAORI",
+    "date": "2025/11/10",
+    "reason": "Trading of the securities in question has, for five consecutive trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/11～2025/11/24",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 3"
+    ],
+    "primary_article": "Art 3",
+    "notice_count": 0
+  },
+  {
+    "symbol": "911608",
+    "name": "BH GLOBAL",
+    "date": "2025/11/19",
+    "reason": "Trading of the securities in question has, for twelve days in the preceding thirty trading days, met TWSE’s “Attention Securities” criteria.",
+    "period": "2025/11/20～2025/12/03",
+    "exchange": "TWSE",
+    "triggered_articles": [
+      "Art 2"
+    ],
+    "primary_article": "Art 2",
+    "notice_count": 0
+  }
+]

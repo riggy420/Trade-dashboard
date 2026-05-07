@@ -78,11 +78,12 @@ export default function MarketAnalysis() {
   // Taiwan Board table
   const [tickers, setTickers] = useState<any[]>([]);
   const [tickerSearch, setTickerSearch] = useState('');
-  const [tickerSortField, setTickerSortField] = useState<'symbol' | 'name' | 'price' | 'change' | 'industry' | null>('symbol');
+  const [tickerSortField, setTickerSortField] = useState<'symbol' | 'name' | 'price' | 'change' | 'industry' | 'risk' | null>('symbol');
   const [tickerSortOrder, setTickerSortOrder] = useState<'asc' | 'desc'>('asc');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [supervisionScores, setSupervisionScores] = useState<Map<string, any>>(new Map());
   const [supervisionLoading, setSupervisionLoading] = useState(false);
+  const [priceRefreshing, setPriceRefreshing] = useState(false);
   const [nextRefresh, setNextRefresh] = useState<number | null>(null);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { isWatched, toggleWatchlist } = useWatchlist();
@@ -301,6 +302,7 @@ export default function MarketAnalysis() {
             risk: t.supervision_risk,
             decision: t.supervision_decision,
             triggered: t.supervision_triggered,
+            harborReasons: t.supervision_harbor_reasons || [],
           });
         }
       }
@@ -333,12 +335,26 @@ export default function MarketAnalysis() {
 
   // Auto-refresh: fetch intraday + refresh ticker list, then schedule next
   const doRefresh = async (force = false) => {
+    setPriceRefreshing(true);
     try {
-      await refreshAllIntradayData(undefined, force);
-    } catch {}
-    try {
-      await refreshTickers();
-    } catch {}
+      // 1. Repull ticker list first (picks up newly listed stocks)
+      try {
+        await refreshTickers();
+        console.log('Ticker list refreshed');
+      } catch (e) {
+        console.error('Failed to refresh tickers:', e);
+      }
+      // 2. Refresh all intraday prices for the full market
+      try {
+        await refreshAllIntradayData(undefined, force);
+        console.log('Intraday prices refreshed');
+      } catch (e) {
+        console.error('Failed to refresh intraday:', e);
+      }
+    } finally {
+      setPriceRefreshing(false);
+    }
+    // 3. Reload ticker data + supervision scores
     fetchTickersData();
     if (force) fetchSupervisionScores(true);
   };
@@ -429,8 +445,15 @@ export default function MarketAnalysis() {
     })
     .sort((a, b) => {
       if (!tickerSortField) return 0;
-      let av: any = a[tickerSortField], bv: any = b[tickerSortField];
-      if (tickerSortField === 'price' || tickerSortField === 'change') {
+      let av: any, bv: any;
+      if (tickerSortField === 'risk') {
+        av = supervisionScores.get(a.symbol)?.score ?? -1;
+        bv = supervisionScores.get(b.symbol)?.score ?? -1;
+      } else {
+        av = a[tickerSortField];
+        bv = b[tickerSortField];
+      }
+      if (tickerSortField === 'price' || tickerSortField === 'change' || tickerSortField === 'risk') {
         av = parseFloat(String(av)) || 0; bv = parseFloat(String(bv)) || 0;
       }
       if (av < bv) return tickerSortOrder === 'asc' ? -1 : 1;
@@ -464,8 +487,11 @@ export default function MarketAnalysis() {
             </span>
           )}
           <button type="button" onClick={() => { doRefresh(true); }}
-            className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded transition">
-            ↻ Refresh Prices
+            disabled={priceRefreshing}
+            className={`text-xs px-2 py-1 border border-gray-200 rounded transition ${
+              priceRefreshing ? 'text-gray-300 cursor-wait' : 'text-gray-500 hover:text-gray-700'
+            }`}>
+            {priceRefreshing ? '⏳ Refreshing...' : '↻ Refresh Prices'}
           </button>
           <button type="button" onClick={() => { fetchSupervisionScores(true); }}
             disabled={supervisionLoading}
@@ -495,13 +521,17 @@ export default function MarketAnalysis() {
               <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold" onClick={() => handleTickerSort('industry')}>INDUSTRY {tickerSortIcon('industry')}</th>
               <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('price')}>PRICE {tickerSortIcon('price')}</th>
               <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-right" onClick={() => handleTickerSort('change')}>CHANGE {tickerSortIcon('change')}</th>
-              <th className="py-2 px-2 font-semibold text-center text-[11px]">
-                DISPOSITION RISK
+              <th className="py-2 px-2 cursor-pointer hover:bg-gray-100 select-none font-semibold text-center text-[11px]" onClick={() => handleTickerSort('risk')}>
+                DISPOSITION RISK {tickerSortIcon('risk')}
                 <span className="block text-[9px] text-gray-400 font-normal">score / level</span>
               </th>
               <th className="py-2 px-2 font-semibold text-center text-[11px]">
                 FLAGGED 30D
                 <span className="block text-[9px] text-gray-400 font-normal">any trigger</span>
+              </th>
+              <th className="py-2 px-2 font-semibold text-center text-[11px]">
+                EXCEPTIONS
+                <span className="block text-[9px] text-gray-400 font-normal">safe harbor</span>
               </th>
             </tr>
           </thead>
@@ -522,7 +552,7 @@ export default function MarketAnalysis() {
                 </td>
                 <td className="py-3 px-2 text-gray-700 text-sm">{t.industry || 'Unknown'}</td>
                 <td className="py-3 px-2 font-semibold text-right">{t.price}</td>
-                <td className={`py-3 px-2 font-semibold text-right ${t.change?.includes('+') ? 'text-green-600' : t.change?.includes('-') ? 'text-red-600' : 'text-gray-400'}`}>{t.change}</td>
+                <td className={`py-3 px-2 font-semibold text-right ${t.change?.includes('+') ? 'text-red-600' : t.change?.includes('-') ? 'text-green-600' : 'text-gray-400'}`}>{t.change}</td>
                 <td className="py-3 px-2 text-center">
                   {(() => {
                     const sup = supervisionScores.get(t.symbol);
@@ -558,9 +588,24 @@ export default function MarketAnalysis() {
                     <span className="text-gray-300 text-xs">—</span>
                   )}
                 </td>
+                <td className="py-3 px-2 text-center">
+                  {(() => {
+                    const sup = supervisionScores.get(t.symbol);
+                    if (!sup || !sup.harborReasons || sup.harborReasons.length === 0) {
+                      return <span className="text-gray-300 text-xs">—</span>;
+                    }
+                    return (
+                      <div className="flex gap-0.5 flex-wrap justify-center">
+                        {sup.harborReasons.map((r: string) => (
+                          <span key={r} className="text-[9px] bg-green-50 text-green-700 px-1 py-0.5 rounded font-medium">{r}</span>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </td>
               </tr>
             )) : (
-              <tr><td colSpan={8} className="py-4 text-center text-gray-500">No stocks found.</td></tr>
+              <tr><td colSpan={9} className="py-4 text-center text-gray-500">No stocks found.</td></tr>
             )}
           </tbody>
         </table>
@@ -602,7 +647,7 @@ export default function MarketAnalysis() {
                  {latestClose !== null ? `NT$${latestClose.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                </span>
                {recentPercentChange !== null && (
-                 <span className={`text-sm font-semibold px-2 py-0.5 rounded ${recentPercentChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                 <span className={`text-sm font-semibold px-2 py-0.5 rounded ${recentPercentChange >= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                    {recentPercentChange >= 0 ? '+' : ''}{recentPercentChange.toFixed(2)}%
                  </span>
                )}
@@ -719,14 +764,23 @@ export default function MarketAnalysis() {
            </div>
          )}
 
-         {/* Supervision / Disposition Risk Card */}
-         {supervisionDetail && supervisionDetail.risk_level !== 'UNKNOWN' && (
-           <div className={`border rounded-lg p-4 shadow-sm ${
-             supervisionDetail.risk_level === 'CRITICAL' ? 'border-red-300 bg-red-50' :
-             supervisionDetail.risk_level === 'HIGH' ? 'border-orange-300 bg-orange-50' :
-             supervisionDetail.risk_level === 'MEDIUM' ? 'border-yellow-300 bg-yellow-50' :
-             'border-green-300 bg-green-50'
-           }`}>
+         {/* Supervision / Disposition Risk Card — always visible */}
+         <div className={`border rounded-lg p-4 shadow-sm ${
+           !supervisionDetail || supervisionDetail.risk_level === 'UNKNOWN' ? 'border-gray-200 bg-gray-50' :
+           supervisionDetail.risk_level === 'CRITICAL' ? 'border-red-300 bg-red-50' :
+           supervisionDetail.risk_level === 'HIGH' ? 'border-orange-300 bg-orange-50' :
+           supervisionDetail.risk_level === 'MEDIUM' ? 'border-yellow-300 bg-yellow-50' :
+           'border-green-300 bg-green-50'
+         }`}>
+           {!supervisionDetail ? (
+             <p className="text-xs text-gray-400 italic text-center py-2">Loading risk data...</p>
+           ) : supervisionDetail.risk_level === 'UNKNOWN' ? (
+             <div className="text-center py-2">
+               <p className="text-xs text-gray-500">No risk data available</p>
+               <p className="text-[10px] text-gray-400 mt-1">Historical data not yet fetched for this stock. Click "Refresh Risk" on the All Stocks table to bootstrap.</p>
+             </div>
+           ) : (
+           <>
              <div className="flex items-center justify-between mb-3">
                <div>
                  <span className="text-xs font-bold uppercase tracking-wider text-gray-600">Disposition Risk</span>
@@ -800,14 +854,24 @@ export default function MarketAnalysis() {
                  ))}
                </div>
              </details>
-           </div>
-         )}
+           </>
+           )}
+         </div>
 
-         {/* 30-day Backtest */}
-         {backtestData && backtestData.backtest_days > 0 && (
-           <div className={`border rounded-lg p-4 shadow-sm ${
-             backtestData.flagged_30d ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-           }`}>
+         {/* 30-day Backtest — always visible */}
+         <div className={`border rounded-lg p-4 shadow-sm ${
+           !backtestData || backtestData.backtest_days === 0 ? 'border-gray-200 bg-gray-50' :
+           backtestData.flagged_30d ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+         }`}>
+           {!backtestData ? (
+             <p className="text-xs text-gray-400 italic text-center py-2">Loading backtest data...</p>
+           ) : backtestData.backtest_days === 0 ? (
+             <div className="text-center py-2">
+               <p className="text-xs text-gray-500">No backtest data available</p>
+               <p className="text-[10px] text-gray-400 mt-1">Requires 60+ days of historical data.</p>
+             </div>
+           ) : (
+           <>
              <div className="flex items-center justify-between mb-3">
                <div>
                  <span className="text-xs font-bold uppercase tracking-wider text-gray-600">30-Day Backtest</span>
@@ -865,8 +929,9 @@ export default function MarketAnalysis() {
                  </div>
                </details>
              )}
-           </div>
-         )}
+           </>
+           )}
+         </div>
       </div>
 
       <div className="bg-white p-4 shadow rounded h-96 w-full mb-8 border border-gray-200 overflow-hidden relative transition-all duration-300 hover:shadow-lg">

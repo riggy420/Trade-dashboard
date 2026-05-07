@@ -289,12 +289,26 @@ def fetch_industry_map() -> dict:
             if not symbol:
                 continue
 
-            # Heuristic: industry/category is often the 3rd column (index 2)
+            # Find the industry column — it's typically the second-to-last cell
+            # and contains Chinese characters ending in 業, 電, 技, etc.
+            # TPEx rows have 6 cols: [code+name, ISIN, date, market, industry, code]
+            # TWSE rows have 5 cols: [code+name, ISIN, date, market, industry]
             industry = None
-            if len(tds) >= 3:
-                industry = tds[2]
-            elif len(tds) >= 4:
-                industry = tds[3]
+            for td in reversed(tds):
+                txt = td.strip()
+                # Industry cells contain Chinese chars and end with an industry suffix
+                if txt and len(txt) >= 2 and not txt[0].isdigit() and not txt in ("上市", "上櫃", "興櫃"):
+                    if any(txt.endswith(suffix) for suffix in ("業", "電", "技", "訊", "動", "品", "化", "建", "融", "險", "通", "航", "觀", "光", "農", "牧", "礦", "泥", "紡", "紙", "鋼", "膠", "油", "氣", "生", "藥", "醫", "材", "貿", "百", "其")):
+                        industry = txt
+                        break
+            # Fallback: try index 4 first, then 2, then 3
+            if not industry:
+                if len(tds) >= 5:
+                    industry = tds[4]
+                elif len(tds) >= 4:
+                    industry = tds[3]
+                elif len(tds) >= 3:
+                    industry = tds[2]
 
             if industry:
                 industries[symbol] = industry
@@ -681,6 +695,75 @@ def fetch_historical_5y(ticker: str) -> str:
     print(f"Saved historical data to {filepath}")
 
     return filepath
+
+
+async def fetch_missing_historical(
+    limit: int | None = None,
+    batch_size: int = 5,
+    pause_seconds: float = 2.0,
+) -> dict:
+    """
+    Find tickers without historical data and fetch them in batches.
+    Reuses fetch_historical_5y for each missing ticker.
+    Returns {fetched, failed, skipped} counts.
+    """
+    tickers = fetch_twse_tickers()
+    # Skip bonds and funds
+    tickers = [t for t in tickers if not is_bond_or_fund(t[0] if isinstance(t, tuple) else t)]
+
+    # Find which tickers are missing historical data
+    missing = []
+    for ticker in tickers:
+        symbol = ticker[0] if isinstance(ticker, tuple) else ticker
+        base = symbol.split(".")[0]
+        has_data = False
+        for suffix in [".TW", ".TWO"]:
+            if os.path.exists(os.path.join(DATA_DIR, f"{base}{suffix}_historical_5y.txt")):
+                has_data = True
+                break
+        if not has_data:
+            missing.append((base, ticker))
+
+    if limit:
+        missing = missing[:limit]
+
+    total_missing = len(missing)
+    if limit:
+        missing = missing[:limit]
+    remaining_missing = total_missing - len(missing)
+
+    print(f"Missing historical data for {total_missing}/{len(tickers)} tickers"
+          + (f" — fetching {len(missing)} (limit={limit})" if limit else " — fetching all"))
+
+    fetched = 0
+    failed = 0
+    loop = asyncio.get_running_loop()
+
+    with ThreadPoolExecutor(max_workers=batch_size) as executor:
+        for i in range(0, len(missing), batch_size):
+            batch = missing[i:i + batch_size]
+            tasks = []
+            for base, ticker in batch:
+                tasks.append(loop.run_in_executor(executor, fetch_historical_5y, base))
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for (base, _), result in zip(batch, results):
+                if isinstance(result, Exception):
+                    print(f"  Failed {base}: {result}")
+                    failed += 1
+                else:
+                    fetched += 1
+
+            if pause_seconds and i + batch_size < len(missing):
+                await asyncio.sleep(pause_seconds)
+
+            if fetched % 50 == 0 and fetched > 0:
+                print(f"  Progress: {fetched} fetched, {failed} failed, {len(missing) - i - len(batch)} remaining")
+
+    already_had = len(tickers) - total_missing
+    print(f"Historical fetch complete: {fetched} fetched, {failed} failed, "
+          f"{already_had} already cached, {remaining_missing} still pending")
+    return {"fetched": fetched, "failed": failed, "skipped": len(tickers) - len(missing)}
 
 
 TWSE_INDEX_API_URL = "https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&date={date}&type=ALLBUT0999"

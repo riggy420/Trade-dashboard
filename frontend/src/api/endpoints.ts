@@ -150,6 +150,15 @@ export const refreshSupervisionCache = async () => {
   return response.data;
 };
 
+export const fullSupervisionRefresh = async (bootstrap?: boolean, limit?: number) => {
+  const params = new URLSearchParams();
+  if (bootstrap !== undefined) params.set('bootstrap', String(bootstrap));
+  if (limit !== undefined) params.set('limit', String(limit));
+  const qs = params.toString();
+  const response = await api.post(`/supervision/full-refresh${qs ? '?' + qs : ''}`);
+  return response.data;
+};
+
 export const fetchSupervisionArticles = async () => {
   const response = await api.get(`/supervision/articles`);
   return response.data;

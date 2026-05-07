@@ -57,6 +57,18 @@ MIGRATE_TRADES_ASSET_TYPE = """
 ALTER TABLE trades ADD COLUMN IF NOT EXISTS asset_type VARCHAR(20) NOT NULL DEFAULT 'stock';
 """
 
+CREATE_SUPERVISION_HISTORY = """
+CREATE TABLE IF NOT EXISTS supervision_history (
+    id       SERIAL PRIMARY KEY,
+    ticker   VARCHAR(20) NOT NULL,
+    time     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    score    NUMERIC(5,1) NOT NULL,
+    reasons  JSONB NOT NULL DEFAULT '[]'
+);
+CREATE INDEX IF NOT EXISTS idx_supervision_ticker ON supervision_history (ticker);
+CREATE INDEX IF NOT EXISTS idx_supervision_time ON supervision_history (time);
+"""
+
 # ---------------------------------------------------------------------------
 # Pool bootstrap
 # ---------------------------------------------------------------------------
@@ -93,6 +105,7 @@ async def create_db_pool() -> asyncpg.Pool:
                 await conn.execute(CREATE_TRADES_TABLE)
                 await conn.execute(MIGRATE_TRADES_LIMIT_PRICE)
                 await conn.execute(MIGRATE_TRADES_ASSET_TYPE)
+                await conn.execute(CREATE_SUPERVISION_HISTORY)
             print("DB pool created and schema ensured.")
             return pool
         except (ConnectionRefusedError, OSError) as e:
@@ -277,5 +290,62 @@ async def get_holdings(pool: asyncpg.Pool, user_id: int) -> list[dict]:
             ORDER BY symbol
             """,
             user_id,
+        )
+    return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Supervision history helpers
+# ---------------------------------------------------------------------------
+
+import json
+import datetime
+
+
+async def save_supervision_snapshot(pool: asyncpg.Pool, results: list[dict]) -> int:
+    """Save a supervision scan snapshot to history. Returns number of rows inserted."""
+    now = datetime.datetime.utcnow()
+    rows = [
+        (r["symbol"], now, r["total_score"],
+         json.dumps(r.get("triggered_articles", []), ensure_ascii=False))
+        for r in results
+    ]
+    async with pool.acquire() as conn:
+        count = await conn.executemany(
+            "INSERT INTO supervision_history (ticker, time, score, reasons) VALUES ($1, $2, $3, $4)",
+            rows,
+        )
+    return int(count) if count else len(rows)
+
+
+async def get_supervision_history(
+    pool: asyncpg.Pool,
+    ticker: str | None = None,
+    limit: int = 100,
+) -> list[dict]:
+    """Query supervision history. Filter by ticker if provided."""
+    async with pool.acquire() as conn:
+        if ticker:
+            rows = await conn.fetch(
+                "SELECT ticker, time, score, reasons FROM supervision_history "
+                "WHERE ticker = $1 ORDER BY time DESC LIMIT $2",
+                ticker, limit,
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT ticker, time, score, reasons FROM supervision_history "
+                "ORDER BY time DESC LIMIT $1",
+                limit,
+            )
+    return [dict(r) for r in rows]
+
+
+async def get_latest_supervision_snapshot(pool: asyncpg.Pool) -> list[dict]:
+    """Return the most recent supervision scan results (latest snapshot per ticker)."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT DISTINCT ON (ticker) ticker, time, score, reasons "
+            "FROM supervision_history "
+            "ORDER BY ticker, time DESC"
         )
     return [dict(r) for r in rows]

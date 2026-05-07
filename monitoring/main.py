@@ -3,13 +3,14 @@ from contextlib import suppress
 from fastapi import FastAPI, HTTPException, Query, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from scrape.scrape import fetch_intraday, fetch_historical_5y, fetch_twse_tickers, fetch_all_intraday, fetch_all_sectors, fetch_all_indices, get_index_constituents, fetch_index_history
+from scrape.scrape import fetch_intraday, fetch_historical_5y, fetch_twse_tickers, fetch_all_intraday, fetch_all_sectors, fetch_all_indices, get_index_constituents, fetch_index_history, fetch_missing_historical
 from analysis_utils import build_analysis_payload
 from db.database import (
     create_db_pool, create_user, get_user_by_username,
     get_watchlist, add_to_watchlist, remove_from_watchlist,
     create_trade, get_trades, get_net_position, get_holdings,
     update_trade, delete_trade,
+    save_supervision_snapshot, get_supervision_history, get_latest_supervision_snapshot,
 )
 from db.redis_client import (
     get_meta, get_all_meta,
@@ -27,7 +28,7 @@ import os
 import re
 import asyncio
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from supervision.supervision_utils import (
     run_supervision_scan, score_stock, scan_all_stocks,
     refresh_scan_cache, ARTICLE_DEFINITIONS,
@@ -50,6 +51,49 @@ app.add_middleware(
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 INTRADAY_REFRESH_BATCH_SIZE = int(os.getenv("INTRADAY_REFRESH_BATCH_SIZE", "5"))
+
+# Taiwan industry English translations
+INDUSTRY_EN = {
+    "半導體業": "Semiconductors",
+    "電腦及週邊設備業": "Computer & Peripherals",
+    "光電業": "Optoelectronics",
+    "通信網路業": "Telecom & Networking",
+    "電子零組件業": "Electronic Components",
+    "電子通路業": "Electronic Distribution",
+    "資訊服務業": "Information Services",
+    "其他電子業": "Other Electronics",
+    "金融保險業": "Financial & Insurance",
+    "水泥工業": "Cement",
+    "食品工業": "Food",
+    "塑膠工業": "Plastics",
+    "紡織纖維": "Textiles",
+    "電器電纜": "Electrical & Cable",
+    "化學工業": "Chemicals",
+    "生技醫療業": "Biotech & Medical",
+    "玻璃陶瓷": "Glass & Ceramics",
+    "造紙工業": "Paper",
+    "鋼鐵工業": "Steel",
+    "橡膠工業": "Rubber",
+    "汽車工業": "Automotive",
+    "建材營造業": "Construction & Building Materials",
+    "航運業": "Shipping & Transportation",
+    "觀光餐旅": "Tourism & Hospitality",
+    "貿易百貨業": "Retail & Trading",
+    "油電燃氣業": "Oil, Gas & Electricity",
+    "文化創意業": "Cultural & Creative",
+    "農業科技業": "Agricultural Technology",
+    "電機機械": "Electrical Machinery",
+    "運動休閒": "Sports & Leisure",
+    "居家生活": "Home & Lifestyle",
+    "綠能環保": "Green Energy & Environmental",
+    "數位雲端": "Digital Cloud",
+    "其他業": "Other",
+}
+
+
+def _translate_industry(chinese: str) -> str:
+    """Return English industry name, or original if no translation exists."""
+    return INDUSTRY_EN.get(chinese, chinese)
 INTRADAY_REFRESH_PAUSE_SECONDS = float(os.getenv("INTRADAY_REFRESH_PAUSE_SECONDS", "2.0"))
 INTRADAY_REFRESH_INTERVAL_SECONDS = int(os.getenv("INTRADAY_REFRESH_INTERVAL_SECONDS", "10800"))
 INTRADAY_STALE_THRESHOLD_SECONDS = int(os.getenv("INTRADAY_STALE_THRESHOLD_SECONDS", "7200"))
@@ -122,9 +166,35 @@ async def _run_intraday_refresh(limit: int | None = None, force: bool = False):
         )
 
 
+def _is_twse_open() -> bool:
+    """Return True if TWSE is currently open (Mon-Fri 09:00-13:30 Taipei time)."""
+    tpe = timezone(timedelta(hours=8))
+    now_tpe = datetime.now(tpe)
+    if now_tpe.weekday() >= 5:  # Saturday or Sunday
+        return False
+    open_time = now_tpe.replace(hour=9, minute=0, second=0, microsecond=0)
+    close_time = now_tpe.replace(hour=13, minute=30, second=0, microsecond=0)
+    return open_time <= now_tpe <= close_time
+
+
+def _seconds_until_market_open() -> float:
+    """Return seconds until next TWSE market open (Mon-Fri 09:00 Taipei)."""
+    tpe = timezone(timedelta(hours=8))
+    now_tpe = datetime.now(tpe)
+    # Find next market open
+    next_open = now_tpe.replace(hour=9, minute=0, second=0, microsecond=0)
+    if now_tpe.weekday() >= 5 or now_tpe >= next_open.replace(hour=13, minute=30):
+        # Currently weekend or after close — find next Monday (or tomorrow if before weekend)
+        days_ahead = 0 if now_tpe.weekday() < 5 else (7 - now_tpe.weekday())
+        if days_ahead == 0 and now_tpe >= next_open.replace(hour=13, minute=30):
+            days_ahead = 1 if now_tpe.weekday() < 4 else (7 - now_tpe.weekday())
+        next_open = (now_tpe + timedelta(days=days_ahead)).replace(
+            hour=9, minute=0, second=0, microsecond=0)
+    return max(0, (next_open - now_tpe).total_seconds())
+
+
 async def _hourly_intraday_refresh_loop():
-    """Background task: refresh intraday data on a fixed interval (default 3 hours)."""
-    # Wait 2 minutes for other startup tasks to finish first
+    """Background task: refresh intraday data during TWSE trading hours (Mon-Fri 09:00-13:30 Taipei)."""
     await asyncio.sleep(120)
     try:
         await _refresh_intraday_if_stale()
@@ -132,17 +202,37 @@ async def _hourly_intraday_refresh_loop():
         print(f"Initial intraday freshness check failed: {e}")
 
     while True:
-        await asyncio.sleep(INTRADAY_REFRESH_INTERVAL_SECONDS)
-        try:
-            print(f"Running scheduled intraday refresh (every {INTRADAY_REFRESH_INTERVAL_SECONDS // 3600}h)...")
-            await _run_intraday_refresh()
-        except Exception as e:
-            print(f"Scheduled intraday refresh failed: {e}")
+        if _is_twse_open():
+            # Market is open — run the refresh
+            try:
+                print(f"Running intraday refresh during trading hours...")
+                await _run_intraday_refresh()
+            except Exception as e:
+                print(f"Intraday refresh during market hours failed: {e}")
+            await asyncio.sleep(INTRADAY_REFRESH_INTERVAL_SECONDS)
+        else:
+            # Market closed — sleep until next open
+            wait = _seconds_until_market_open()
+            wait_min = wait / 60
+            print(f"TWSE closed. Sleeping {wait_min:.0f} min until next market open "
+                  f"(next refresh every {INTRADAY_REFRESH_INTERVAL_SECONDS // 3600}h during trading)")
+            if wait > 0:
+                await asyncio.sleep(min(wait, 3600))  # Check hourly if market is about to open
 
 
 async def _ensure_sectors_cache():
-    """Generate twse_sectors.txt if missing."""
+    """Generate twse_sectors.txt and twse_industries.txt if missing."""
     sectors_file = os.path.join(DATA_DIR, "twse_sectors.txt")
+    industries_file = os.path.join(DATA_DIR, "twse_industries.txt")
+
+    if not os.path.exists(industries_file):
+        print("twse_industries.txt missing, scraping ISIN industry data...")
+        try:
+            from scrape.scrape import fetch_industry_map
+            await asyncio.to_thread(fetch_industry_map)
+        except Exception as e:
+            print(f"Failed to scrape industries: {e}")
+
     if not os.path.exists(sectors_file):
         print("twse_sectors.txt missing, regenerating industry data...")
         try:
@@ -308,8 +398,20 @@ def get_tickers(_user: dict = Depends(get_current_user)):
     except Exception:
         pass
 
-    # Load sector/industry data
+    # Load ISIN-scraped industries FIRST (accurate for all TWSE/TPEx stocks, no rate limits)
     industry_map = {}
+    industries_file = os.path.join(DATA_DIR, "twse_industries.txt")
+    if os.path.exists(industries_file):
+        try:
+            with open(industries_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    parts = line.strip().split("\t")
+                    if len(parts) >= 2 and parts[1]:
+                        industry_map[parts[0]] = parts[1]
+        except Exception as e:
+            print(f"Warning: Failed to load ISIN industries: {e}")
+
+    # Load yfinance sectors as fallback (only for tickers ISIN didn't cover)
     sectors_file = os.path.join(DATA_DIR, "twse_sectors.txt")
     if os.path.exists(sectors_file):
         try:
@@ -318,10 +420,11 @@ def get_tickers(_user: dict = Depends(get_current_user)):
                     parts = line.strip().split("\t")
                     if len(parts) >= 3:
                         ticker = parts[0]
-                        industry = parts[2] if len(parts) > 2 else "Unknown"
-                        industry_map[ticker] = industry
+                        industry = parts[2] if len(parts) > 2 else ""
+                        # Only use yfinance if ISIN didn't have this ticker AND it's not Unknown
+                        if ticker not in industry_map and industry and "Unknown" not in industry:
+                            industry_map[ticker] = industry
         except (UnicodeDecodeError, UnicodeError):
-            # File may be corrupt or in a different encoding — reset it
             print("Warning: industry data file corrupt, removing to force regeneration")
             try:
                 os.remove(sectors_file)
@@ -329,7 +432,21 @@ def get_tickers(_user: dict = Depends(get_current_user)):
                 pass
         except Exception as e:
             print(f"Warning: Failed to load industry data: {e}")
-    
+
+    # Load fundamentals for English ticker names
+    english_names = {}
+    fundamentals_file = os.path.join(DATA_DIR, "twse_fundamentals.json")
+    if os.path.exists(fundamentals_file):
+        try:
+            with open(fundamentals_file, "r", encoding="utf-8") as f:
+                fund_data = json.load(f)
+            for sym, val in fund_data.items():
+                if val.get("longName"):
+                    english_names[sym] = val["longName"]
+            print(f"[tickers] Loaded {len(english_names)} English names from fundamentals cache")
+        except Exception as e:
+            print(f"[tickers] Failed to load English names: {e}")
+
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read().splitlines()
         
@@ -382,28 +499,29 @@ def get_tickers(_user: dict = Depends(get_current_user)):
                         pass
                     break
                 
-        # Determine industry: bonds, mutual funds, or from sector data
+        # Determine industry: bonds, mutual funds, or from sector data (translated)
         if re.match(r'^\d{4,6}B', symbol):
             industry = "Bonds"
         elif symbol.startswith("TW000T"):
             industry = "Mutual Funds"
         else:
-            industry = industry_map.get(symbol, "Unknown")
+            industry = _translate_industry(industry_map.get(symbol, "Unknown"))
+
+        # Use English name from fundamentals if available, otherwise keep original
+        display_name = english_names.get(symbol, name)
 
         results.append({
             "symbol": symbol,
-            "name": name,
+            "name": display_name,
             "market": market,
             "price": price,
             "change": change,
             "industry": industry,
         })
         
-    import zipfile
-    import json
-    import io
+    # json, zipfile, and io are already imported at module level
     from fastapi.responses import StreamingResponse
-    
+
     # Send as JSON (if you want literal zip, we can return StreamingResponse)
     return {"tickers": results}
 
@@ -460,6 +578,8 @@ def get_tickers_supervised(
                 "risk_level": r["risk_level"],
                 "decision": r.get("decision", "N/A"),
                 "triggered_articles": r.get("triggered_articles", []),
+                "safe_harbor": r.get("safe_harbor", False),
+                "safe_harbor_reasons": r.get("safe_harbor_reasons", []),
             }
     except Exception as e:
         print(f"Supervision scan failed in tickers-supervised: {e}")
@@ -476,6 +596,8 @@ def get_tickers_supervised(
             "supervision_risk": sup.get("risk_level", "N/A"),
             "supervision_decision": sup.get("decision"),
             "supervision_triggered": sup.get("triggered_articles", []),
+            "supervision_safe_harbor": sup.get("safe_harbor", False),
+            "supervision_harbor_reasons": sup.get("safe_harbor_reasons", []),
         })
 
     return {
@@ -576,117 +698,112 @@ async def refresh_sectors(_user: dict = Depends(get_current_user)):
 @app.get("/api/data/sectors")
 def get_sectors_overview(_user: dict = Depends(get_current_user)):
     """
-    Returns a comprehensive overview of all sectors/industries with:
-    - List of sectors and their counts
-    - Average performance per sector
-    - Top and worst performers per sector
+    Returns a comprehensive overview of all industries with:
+    - Stock counts per industry (from ISIN, English-translated)
+    - Average performance per industry
+    - Top and worst performers per industry
     """
-    sectors_file = os.path.join(DATA_DIR, "twse_sectors.txt")
     tickers_file = os.path.join(DATA_DIR, "twse_tickers.txt")
-    
-    if not os.path.exists(sectors_file):
-        raise HTTPException(status_code=404, detail="Sector data not found. Call /api/refresh/sectors first.")
-    
-    # Load sectors data
-    sectors_map = {}
-    try:
-        with open(sectors_file, "r", encoding="utf-8") as f:
-            for line in f:
-                parts = line.strip().split("\t")
-                if len(parts) >= 3:
-                    ticker = parts[0]
-                    sector = parts[1] if parts[1] else "Unknown Sector"
-                    industry = parts[2] if len(parts) > 2 else "Unknown Industry"
-                    if sector not in sectors_map:
-                        sectors_map[sector] = {"tickers": [], "industry": industry}
-                    sectors_map[sector]["tickers"].append(ticker)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading sector data: {str(e)}")
-    
-    # Get current prices and performance for each ticker
-    ticker_performance = {}
+    industries_file = os.path.join(DATA_DIR, "twse_industries.txt")
+
+    # Load ISIN industries (primary source, accurate for 1966+ tickers)
+    industry_map = {}
+    if os.path.exists(industries_file):
+        try:
+            with open(industries_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    parts = line.strip().split("\t")
+                    if len(parts) >= 2 and parts[1]:
+                        industry_map[parts[0]] = parts[1]
+        except Exception:
+            pass
+
+    # Fallback: yfinance sectors for any tickers ISIN didn't cover
+    sectors_file = os.path.join(DATA_DIR, "twse_sectors.txt")
+    if os.path.exists(sectors_file):
+        try:
+            with open(sectors_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    parts = line.strip().split("\t")
+                    if len(parts) >= 3:
+                        ticker = parts[0]
+                        if ticker not in industry_map:
+                            ind = parts[2] if len(parts) > 2 else ""
+                            if ind and "Unknown" not in ind:
+                                industry_map[ticker] = ind
+        except Exception:
+            pass
+
+    # Group tickers by industry (translated to English)
+    sectors_map: dict[str, dict] = {}
     try:
         with open(tickers_file, "r", encoding="utf-8") as f:
             for line in f:
-                parts = [part.strip() for part in line.strip().split(",") if part.strip()]
-                if len(parts) >= 3:
-                    symbol = parts[0]
-                    market = parts[-1]
-                    name = ",".join(parts[1:-1]).strip() or "Unknown"
-                elif len(parts) == 2:
-                    symbol, name = parts
-                    market = "Unknown"
-                else:
-                    symbol, name, market = line.strip(), "Unknown", "Unknown"
-                
-                price = None
-                change = None
-                
-                # Try to get latest price and change from intraday data
-                suffix = ".TW" if market == "TWSE" else ".TWO" if market == "TPEx" else None
-                suffixes = [suffix] if suffix else [".TW", ".TWO"]
-
-                for suffix in suffixes:
-                    intra_file = os.path.join(DATA_DIR, f"{symbol}{suffix}_intraday.txt")
-                    if os.path.exists(intra_file):
-                        try:
-                            with open(intra_file, "r") as inf:
-                                lines = inf.read().splitlines()
-                                if len(lines) >= 2:
-                                    last_row = lines[-1].split('\t')
-                                    prev_row = lines[-2].split('\t') if len(lines) >= 3 else last_row
-                                    
-                                    try:
-                                        current_close = float(last_row[4])
-                                        prev_close = float(prev_row[4])
-                                        pct_change = ((current_close - prev_close) / prev_close) * 100 if prev_close != 0 else 0
-                                        price = current_close
-                                        change = pct_change
-                                    except (ValueError, IndexError):
-                                        pass
-                        except:
-                            pass
-                        break
-                
-                ticker_performance[symbol] = {"name": name, "price": price, "change": change}
+                parts = [p.strip() for p in line.strip().split(",") if p.strip()]
+                if not parts:
+                    continue
+                symbol = parts[0]
+                if symbol.startswith("TW000T") or (len(symbol) >= 4 and symbol.endswith("B")):
+                    continue
+                raw_ind = industry_map.get(symbol, "Unknown")
+                industry = _translate_industry(raw_ind)
+                if industry not in sectors_map:
+                    sectors_map[industry] = {"tickers": []}
+                sectors_map[industry]["tickers"].append(symbol)
     except Exception as e:
-        print(f"Error reading ticker performance: {e}")
-    
-    # Build sector overview with performance metrics
+        raise HTTPException(status_code=500, detail=f"Error reading ticker data: {str(e)}")
+
+    # Load Redis meta for fast price/change lookup
+    redis_meta = {}
+    try:
+        from redis import Redis as SyncRedis
+        r = SyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"),
+                               decode_responses=True, socket_connect_timeout=2)
+        r.ping()
+        for key in r.scan_iter("intraday:meta:*"):
+            v = r.get(key)
+            if v:
+                try:
+                    m = json.loads(v)
+                    redis_meta[m["symbol"]] = m
+                except (json.JSONDecodeError, KeyError):
+                    pass
+    except Exception:
+        pass
+
+    # Build industry overview
     sectors_overview = []
-    for sector_name, sector_data in sorted(sectors_map.items()):
-        sector_tickers = sector_data["tickers"]
-        performance_data = [ticker_performance.get(t, {}).get("change") for t in sector_tickers if ticker_performance.get(t, {}).get("change") is not None]
-        
-        # Calculate average change
-        avg_change = None
-        if performance_data:
-            avg_change = sum(performance_data) / len(performance_data)
-        
-        # Find top and worst performers
-        top_performer = None
-        worst_performer = None
-        if performance_data:
-            max_change = max(performance_data)
-            min_change = min(performance_data)
-            
-            for t in sector_tickers:
-                perf = ticker_performance.get(t, {})
-                if perf.get("change") == max_change and not top_performer:
-                    top_performer = {"symbol": t, "name": perf.get("name", "Unknown"), "change": round(max_change, 2)}
-                if perf.get("change") == min_change and not worst_performer:
-                    worst_performer = {"symbol": t, "name": perf.get("name", "Unknown"), "change": round(min_change, 2)}
-        
+    for industry_name, industry_data in sorted(sectors_map.items()):
+        tickers = industry_data["tickers"]
+        changes = []
+        top = None
+        worst = None
+        best_change = -999
+        worst_change = 999
+
+        for sym in tickers:
+            meta = redis_meta.get(sym, {})
+            pct = meta.get("changePct")
+            if pct is not None:
+                changes.append(pct)
+                if pct > best_change:
+                    best_change = pct
+                    top = {"symbol": sym, "change": round(pct, 2)}
+                if pct < worst_change:
+                    worst_change = pct
+                    worst = {"symbol": sym, "change": round(pct, 2)}
+
+        avg_change = round(sum(changes) / len(changes), 2) if changes else None
+
         sectors_overview.append({
-            "sector": sector_name,
-            "industry": sector_data.get("industry", "Unknown"),
-            "stock_count": len(sector_tickers),
-            "available_data_count": len(performance_data),
-            "average_change": round(avg_change, 2) if avg_change is not None else None,
-            "top_performer": top_performer,
-            "worst_performer": worst_performer
+            "sector": industry_name,
+            "stock_count": len(tickers),
+            "available_data_count": len(changes),
+            "average_change": avg_change,
+            "top_performer": top,
+            "worst_performer": worst,
         })
-    
+
     return {"sectors": sectors_overview, "total_sectors": len(sectors_overview)}
 
 
@@ -856,28 +973,39 @@ def get_index_constituents_endpoint(sector_or_index: str, _user: dict = Depends(
 # ---------------------------------------------------------------------------
 
 @app.get("/api/supervision/scan")
-def get_supervision_scan(
+async def get_supervision_scan(
     limit: int = Query(50, ge=1, le=500),
     min_score: float = Query(0, ge=0, le=100),
     risk_level: str = Query(None),
     force: bool = Query(False),
+    persist: bool = Query(True),
     _user: dict = Depends(get_current_user)
 ):
     """
     Run full supervision scan across all stocks with cached data.
     Returns stocks sorted by total_score descending.
     Set force=true to bypass the in-memory cache and recompute.
+    Results are persisted to PostgreSQL by default.
     """
     try:
-        results = run_supervision_scan(force_refresh=force)
+        # Run scan in thread pool to avoid blocking the event loop
+        results = await asyncio.to_thread(run_supervision_scan, force_refresh=force)
+
+        # Persist to PostgreSQL (async, fire-and-forget)
+        if persist and results:
+            try:
+                await save_supervision_snapshot(app.state.db_pool, results)
+            except Exception as e:
+                print(f"Failed to persist supervision snapshot: {e}")
 
         # Filter
+        full_total = len(results)
         if min_score > 0:
             results = [r for r in results if r["total_score"] >= min_score]
         if risk_level:
             results = [r for r in results if r["risk_level"] == risk_level.upper()]
 
-        total = len(results)
+        filtered_total = len(results)
         results = results[:limit]
 
         # Count by risk level
@@ -888,8 +1016,8 @@ def get_supervision_scan(
 
         return {
             "scan_timestamp": datetime.now().isoformat(),
-            "total_scanned": total,
-            "returned": len(results),
+            "total_scanned": full_total,
+            "returned": filtered_total,
             "risk_counts": risk_counts,
             "stocks": results,
         }
@@ -925,6 +1053,60 @@ def refresh_supervision_cache(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/supervision/full-refresh")
+async def full_supervision_refresh(
+    bootstrap: bool = Query(True),
+    limit: int = Query(None),
+    _user: dict = Depends(get_current_user)
+):
+    """
+    Full pipeline: fetch missing historical data → refresh fundamentals → run scan → persist.
+    Set bootstrap=false to skip the historical fetch (scan only).
+    Set limit=N to cap how many new stocks to fetch (None = all missing).
+    First bootstrap of ~1900 stocks takes 10-15 min; subsequent runs take seconds.
+    """
+    try:
+        result = {"steps": []}
+
+        # Step 1: Fetch missing historical data for unscored tickers
+        if bootstrap:
+            hist_result = await fetch_missing_historical(
+                limit=limit, batch_size=8, pause_seconds=1.0
+            )
+            result["steps"].append({"step": "historical_fetch", **hist_result})
+
+        # Step 2: Refresh fundamentals (background, don't block)
+        try:
+            await asyncio.to_thread(fetch_fundamentals_batch)
+            result["steps"].append({"step": "fundamentals", "status": "started"})
+        except Exception as e:
+            result["steps"].append({"step": "fundamentals", "status": "failed", "error": str(e)})
+
+        # Step 3: Run supervision scan with fresh data
+        refresh_scan_cache()
+        scan_results = await asyncio.to_thread(run_supervision_scan, force_refresh=True)
+        result["steps"].append({"step": "scan", "stocks_scored": len(scan_results)})
+
+        # Step 4: Persist to PostgreSQL
+        try:
+            count = await save_supervision_snapshot(app.state.db_pool, scan_results)
+            result["steps"].append({"step": "persist", "rows_saved": count})
+        except Exception as e:
+            result["steps"].append({"step": "persist", "status": "failed", "error": str(e)})
+
+        # Risk summary
+        risk_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+        for r in scan_results:
+            rl = r.get("risk_level", "LOW")
+            risk_counts[rl] = risk_counts.get(rl, 0) + 1
+        result["risk_counts"] = risk_counts
+        result["status"] = "success"
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/supervision/articles")
 def get_supervision_articles():
     """Return definitions and thresholds for all 14 supervision articles."""
@@ -955,6 +1137,32 @@ def get_backtest_30d(
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Backtest failed: {str(e)}")
+
+
+@app.get("/api/supervision/history")
+async def get_supervision_history_endpoint(
+    ticker: str = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    _user: dict = Depends(get_current_user)
+):
+    """Query historical supervision scan results from PostgreSQL."""
+    try:
+        rows = await get_supervision_history(app.state.db_pool, ticker=ticker, limit=limit)
+        return {"history": rows, "count": len(rows)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"History query failed: {str(e)}")
+
+
+@app.get("/api/supervision/latest")
+async def get_supervision_latest(
+    _user: dict = Depends(get_current_user)
+):
+    """Return the most recent supervision snapshot from PostgreSQL."""
+    try:
+        rows = await get_latest_supervision_snapshot(app.state.db_pool)
+        return {"latest": rows, "count": len(rows)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Latest query failed: {str(e)}")
 
 
 # ---------------------------------------------------------------------------

@@ -64,8 +64,8 @@ export default function WatchlistPage() {
                     {priceMap[item.symbol]?.price ?? '—'}
                   </td>
                   <td className={`px-4 py-3 text-right font-semibold text-sm ${
-                    priceMap[item.symbol]?.change?.includes('+') ? 'text-green-600' :
-                    priceMap[item.symbol]?.change?.includes('-') ? 'text-red-600' : 'text-gray-400'
+                    priceMap[item.symbol]?.change?.includes('+') ? 'text-red-600' :
+                    priceMap[item.symbol]?.change?.includes('-') ? 'text-green-600' : 'text-gray-400'
                   }`}>
                     {priceMap[item.symbol]?.change ?? '—'}
                   </td>

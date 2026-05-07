@@ -306,11 +306,20 @@ def _compute_stock_metrics(symbol: str, sector: str,
     vol_ratio_6d = avg_vol_6d / avg_vol_60d if avg_vol_60d > 0 else 0.0
     vol_ratio_1d = today_vol / avg_vol_60d if avg_vol_60d > 0 else 0.0
 
+    def _to_float(v) -> float | None:
+        """Safely coerce a value to float, returning None if impossible."""
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
     fund = fundamentals or {}
-    shares_outstanding = fund.get("sharesOutstanding")
-    trailing_pe = fund.get("trailingPE") or fund.get("forwardPE")
-    price_to_book = fund.get("priceToBook")
-    market_cap = fund.get("marketCap")
+    shares_outstanding = _to_float(fund.get("sharesOutstanding"))
+    trailing_pe = _to_float(fund.get("trailingPE")) or _to_float(fund.get("forwardPE"))
+    price_to_book = _to_float(fund.get("priceToBook"))
+    market_cap = _to_float(fund.get("marketCap"))
 
     # Load intraday data for today (hourly OHLCV)
     intra = _load_intraday_today(symbol)
@@ -394,17 +403,19 @@ def _compute_aggregates(all_metrics: list[StockMetrics]) -> MarketAggregates:
     pb_weighted_sum = 0.0
     total_cap = 0.0
     for m in all_metrics:
-        cap = m.market_cap or 0
-        if m.trailing_pe is not None and m.trailing_pe > 0 and cap > 0:
+        cap = float(m.market_cap or 0)
+        pe = float(m.trailing_pe) if m.trailing_pe is not None else None
+        if pe is not None and pe > 0 and cap > 0:
             pe_weighted_sum += m.trailing_pe * cap
             total_cap += cap
     market.market_weighted_pe = pe_weighted_sum / total_cap if total_cap > 0 else 0.0
 
     total_cap = 0.0
     for m in all_metrics:
-        cap = m.market_cap or 0
-        if m.price_to_book is not None and m.price_to_book > 0 and cap > 0:
-            pb_weighted_sum += m.price_to_book * cap
+        cap = float(m.market_cap or 0)
+        pb = float(m.price_to_book) if m.price_to_book is not None else None
+        if pb is not None and pb > 0 and cap > 0:
+            pb_weighted_sum += pb * cap
             total_cap += cap
     market.market_weighted_pb = pb_weighted_sum / total_cap if total_cap > 0 else 0.0
 
@@ -602,6 +613,7 @@ def _score_article_5(m: StockMetrics, agg: MarketAggregates) -> ArticleResult:
             "intraday_turnover_pct": round(m.turnover_1d, 2) if m.turnover_1d else None,
             "turnover_market_divergence": round(turnover_div, 2) if m.turnover_1d else None,
         })
+
 
 
 def _score_article_6(m: StockMetrics, agg: MarketAggregates) -> ArticleResult:
@@ -867,11 +879,16 @@ _ARTICLE_WEIGHTS = {
 
 def _compute_total_score(results: list[ArticleResult], decision: str,
                          safe_harbor: bool) -> float:
-    # Only zero out for true exemptions (safe harbor). Otherwise, the total
-    # reflects the strongest article signal even if no article fully triggers.
     if safe_harbor:
         return 0.0
-    return max(r.score_contribution for r in results)
+    raw = max(r.score_contribution for r in results)
+    # Cap at 69 if no article actually triggered — a stock can have high
+    # article scores (close to thresholds) without crossing any.
+    # CRITICAL (70+) requires at least one article to actually fire.
+    any_triggered = any(r.triggered for r in results)
+    if not any_triggered and raw >= 70:
+        return 69.0
+    return raw
 
 def _risk_level(score: float) -> str:
     if score >= 70:
@@ -887,58 +904,112 @@ def _risk_level(score: float) -> str:
 # Single-stock scoring with context
 # ---------------------------------------------------------------------------
 
+def _sanitize_float(v: float) -> float:
+    """Replace NaN/Inf with 0.0 so JSON serialization doesn't crash."""
+    if math.isnan(v) or math.isinf(v):
+        return 0.0
+    return v
+
+
+def _sanitize_dict(d: dict) -> dict:
+    """Recursively replace NaN/Inf float values in a dict."""
+    for key, val in d.items():
+        if isinstance(val, float):
+            d[key] = _sanitize_float(val)
+        elif isinstance(val, dict):
+            _sanitize_dict(val)
+        elif isinstance(val, list):
+            for i, item in enumerate(val):
+                if isinstance(item, float):
+                    val[i] = _sanitize_float(item)
+                elif isinstance(item, dict):
+                    _sanitize_dict(item)
+    return d
+
+
 def score_stock_with_context(m: StockMetrics, agg: MarketAggregates) -> dict:
-    """Score a single stock with full market/sector context."""
+    """Score a single stock with full market/sector context.
+
+    Sequential decision tree per article.md:
+    Gate 1: Price Momentum (Art 2, 3, 12, 4-1) — check first
+    Gate 2: Volume & Turnover (Art 4, 5, 10, 11) — only if price is clean
+    Gate 3: Valuation & Structure (Art 6, 7, 8, 9, 13, 14) — only if vol is clean
+    Short-circuits: if any article in an earlier gate triggers, skip later gates.
+    """
     sector_size = agg.sector_size.get(m.sector, 0)
     safe_harbor, safe_harbor_reasons = _apply_safe_harbors(m, sector_size)
 
-    article_funcs = [
-        _score_article_2, _score_article_3, _score_article_4,
-        _score_article_5, _score_article_6, _score_article_7,
-        _score_article_8, _score_article_9, _score_article_10,
-        _score_article_11, _score_article_12, _score_article_13,
-        _score_article_14,
-    ]
-
-    # Articles that require MarketAggregates
-    needs_agg = {"Art 2", "Art 3", "Art 4", "Art 5", "Art 7", "Art 10", "Art 11"}
-    # Articles that only need StockMetrics
-    no_agg = {"Art 6", "Art 8", "Art 9", "Art 12", "Art 13", "Art 14"}
+    # Articles that take (m, agg) vs (m) only
+    def _call(func):
+        sig = func.__code__.co_varnames[:func.__code__.co_argcount]
+        return func(m, agg) if "agg" in sig else func(m)
 
     results = []
-    for func in article_funcs:
-        art_num = func.__name__.replace("_score_", "").replace("article_", "Art ")
-        # Determine if this function needs MarketAggregates
-        sig = func.__code__.co_varnames[:func.__code__.co_argcount]
-        if "agg" in sig:
-            results.append(func(m, agg))
-        else:
-            results.append(func(m))
+
+    # Gate 1: Price Momentum
+    price_articles = [
+        _score_article_2, _score_article_3, _score_article_12
+    ]
+    for func in price_articles:
+        results.append(_call(func))
+    if any(r.triggered for r in results):
+        decision = _apply_decision_tree(results, safe_harbor, safe_harbor_reasons, sector_size)
+        total_score = _sanitize_float(_compute_total_score(results, decision.classification, safe_harbor))
+        return _sanitize_dict({
+            "symbol": m.symbol, "total_score": round(total_score, 1),
+            "risk_level": _risk_level(total_score),
+            "safe_harbor": safe_harbor, "safe_harbor_reasons": safe_harbor_reasons,
+            "decision": decision.classification,
+            "triggered_articles": decision.triggered_articles,
+            "signals": [{"article": r.article, "description": r.description,
+                "triggered": r.triggered, "fully_computed": r.fully_computed,
+                "score_contribution": round(_sanitize_float(r.score_contribution), 1),
+                "details": r.details, "caveat": r.caveat} for r in results],
+        })
+
+    # Gate 2: Volume & Turnover (only if no price trigger)
+    vol_articles = [
+        _score_article_4, _score_article_5, _score_article_10, _score_article_11
+    ]
+    for func in vol_articles:
+        results.append(_call(func))
+    if any(r.triggered for r in results[len(price_articles):]):
+        decision = _apply_decision_tree(results, safe_harbor, safe_harbor_reasons, sector_size)
+        total_score = _sanitize_float(_compute_total_score(results, decision.classification, safe_harbor))
+        return _sanitize_dict({
+            "symbol": m.symbol, "total_score": round(total_score, 1),
+            "risk_level": _risk_level(total_score),
+            "safe_harbor": safe_harbor, "safe_harbor_reasons": safe_harbor_reasons,
+            "decision": decision.classification,
+            "triggered_articles": decision.triggered_articles,
+            "signals": [{"article": r.article, "description": r.description,
+                "triggered": r.triggered, "fully_computed": r.fully_computed,
+                "score_contribution": round(_sanitize_float(r.score_contribution), 1),
+                "details": r.details, "caveat": r.caveat} for r in results],
+        })
+
+    # Gate 3: Valuation & Structure (only if price and volume are clean)
+    val_articles = [
+        _score_article_7, _score_article_6, _score_article_8,
+        _score_article_9, _score_article_13, _score_article_14,
+    ]
+    for func in val_articles:
+        results.append(_call(func))
 
     decision = _apply_decision_tree(results, safe_harbor, safe_harbor_reasons, sector_size)
-    total_score = _compute_total_score(results, decision.classification, safe_harbor)
+    total_score = _sanitize_float(_compute_total_score(results, decision.classification, safe_harbor))
 
-    return {
-        "symbol": m.symbol,
-        "total_score": round(total_score, 1),
+    return _sanitize_dict({
+        "symbol": m.symbol, "total_score": round(total_score, 1),
         "risk_level": _risk_level(total_score),
-        "safe_harbor": safe_harbor,
-        "safe_harbor_reasons": safe_harbor_reasons,
+        "safe_harbor": safe_harbor, "safe_harbor_reasons": safe_harbor_reasons,
         "decision": decision.classification,
         "triggered_articles": decision.triggered_articles,
-        "signals": [
-            {
-                "article": r.article,
-                "description": r.description,
-                "triggered": r.triggered,
-                "fully_computed": r.fully_computed,
-                "score_contribution": round(r.score_contribution, 1),
-                "details": r.details,
-                "caveat": r.caveat,
-            }
-            for r in results
-        ],
-    }
+        "signals": [{"article": r.article, "description": r.description,
+            "triggered": r.triggered, "fully_computed": r.fully_computed,
+            "score_contribution": round(_sanitize_float(r.score_contribution), 1),
+            "details": r.details, "caveat": r.caveat} for r in results],
+    })
 
 
 # ---------------------------------------------------------------------------
